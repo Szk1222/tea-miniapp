@@ -151,8 +151,20 @@
 - 小程序上传 `.github/scripts/upload-miniprogram.js`：用 API 而非 CLI 长参数；
   `require('miniprogram-ci')` 必须排在环境校验**之后**（否则依赖缺失时 MODULE_NOT_FOUND 盖住真因）；
   装在全局，靠 `NODE_PATH=$(npm root -g)` 解析（装项目内会落进上传目录）
-- 上传密钥走 `Secrets.MINIPROGRAM_PRIVATE_KEY`（密钥文件的 base64 单行文本）。
-  **IP 白名单是最大的坑**：GitHub 托管 runner 出口 IP 动态（Azure 段），
+- 上传密钥走 `Secrets.MINIPROGRAM_PRIVATE_KEY`。**契约不是「base64」，而是「两种都收」**：
+  - a) 密钥文件的 base64 单行文本（`base64 -w0 private.wxXXXX.key | clip`）
+  - b) 密钥文件的**原始文本内容**（直接粘贴 .key 全文也可以）
+  - 由 `.github/scripts/decode-key.js` 自动识别（base64 / 原文 / certutil 产物 / url-safe 四种）
+  - **判定顺序必须先试 base64 再回退原文**：certutil 产物（base64 外套 BEGIN/END）两者都像，
+    只有「**解出来仍带 PEM 包裹**」的才是密钥文件本身
+  - 日志只打印结构特征（字节数 / 行数 / PEM 标签 / **sha256**）**不回显内容**；
+    sha256 供与本地 `sha256sum private.wxXXXX.key` 对照，可确证 Secret 内容正确
+- **`private.wx<appid>.key` 的实际结构**（本机实证）：**本身就是 PEM 文本** ——
+  `-----BEGIN RSA PRIVATE KEY-----` + 25 行 base64（1588 字符）+ END 行，
+  共 **1675 字节 / LF 换行 / 无 BOM**，内层 base64 解出 1191 字节 DER。
+  所以「粘原文 + `base64 -d`」必然报 `base64: invalid input`，
+  **而这个报错完全看不出真实原因**（见「踩过的坑」）
+- **IP 白名单是最大的坑**：GitHub 托管 runner 出口 IP 动态（Azure 段），
   密钥一开白名单**必然上传失败** —— 要么关白名单，要么自托管 runner
 - 详细说明见 `docs/github-actions-deploy.md`
 - **已实测跑通**（2026-10-08，run #37762801471，push 触发，全程约 1 分钟）：
@@ -173,6 +185,14 @@
 - **PAT 必须同时有 `Contents: Read and write` + `Workflows: Read and write`**：
   推送 `.github/workflows/` 下的文件时，缺 workflow 权限会被拒
   （`refusing to allow a Personal Access Token to create or update workflow`）
+- **实际拿到的令牌还缺这几项，会以 403 出现 —— 是权限边界不是故障**：
+  | 缺失权限 | 表现 | 绕开方式 |
+  |---|---|---|
+  | `Actions: write` | `POST .../workflows/x/dispatches` 返 **403**，无法用 API 触发 | 让用户在 Actions 页点 Run workflow |
+  | `Secrets: read` | `GET .../actions/secrets` 返 **403**，看不见 Secret 列表 | 用作业日志里 `MP_PRIVATE_KEY: ***`（有值即已配置）判断 |
+  | `read:packages` | `GET /user/packages` 返 **403** | 从构建作业日志里 grep 实际镜像标签 |
+  **注意**：dispatch 成功返回 **204 且无响应体**；脚本若只看「响应体是否为空」会把 403 也报成成功 ——
+  必须同时判 HTTP 状态码
 - 判定仓库是否私有：`git -c credential.helper= ls-remote origin`
   → `Invalid username or token` 即私有
 
@@ -219,6 +239,29 @@
     判断泄漏要搜**真实值前缀**（即「能被拿去用的那一整串」），而不是「描述这类东西的词」。
     推论：**写进记忆文件的也应该是「怎么判别」而不是被判别物本身** ——
     把密钥/令牌的前几位抄进 md 属于自造泄漏面，一律不写
+14. **凡是「要求用户先手工编码再粘贴」的设计，都会以故障形式回到自己身上**：
+    上传密钥原本写死「Secret 必须是 base64」，结果用户粘了 `.key` 原文，
+    CI 只回一句 `base64: invalid input` —— **报错完全指不出真实原因**，排查成本极高。
+    正确做法是**让接收端兼容多种形态**（见 `decode-key.js`：base64 / 原文 / certutil 产物 / url-safe），
+    并把「失败时该粘什么」写进错误信息。设计 Secrets / 环境变量 / 配置项时先问：
+    「用户最自然的做法是什么？我接得住吗？」
+15. **多分支逻辑的测试，必须先确认分支真被走到**：给 url-safe 分支造的用例
+    因为该文件的 base64 天然不含 `+`/`/`，输入与 standard 分支完全相同 ——
+    **两条路径测的其实是同一条**，却显示「4/4 通过」。靠打印「走了哪条分支」才发现。
+    修法：断言里带上**分支标识**，并用另造的随机载荷补测（本次才真正覆盖到 url-safe）。
+16. **base64 的字符集不是「均匀随机」——源数据受限时输出也会受限**：
+    PEM 正文只由 base64 字母表 + 连字符 + 换行组成，而 `+`/`/`（索引 62/63）
+    要求源字节以 `>`(0x3E)/`?`(0x3F) 结尾，这类字符 PEM 里没有 →
+    **这份 1675 字节密钥文件的 base64 里 `+`/`/` 出现 0 次**（2236 字符）。
+    我一度判断「统计上不可能，一定是 shell 把引号吃了」——**差点据此改错方向**。
+    遇到反常数据先用落盘脚本（避开 shell 引号）复验，再下结论
+17. **本机两个会导致「误判成服务故障」的环境坑**：
+    - `HTTP_PROXY` 指向 Mihomo `127.0.0.1:59230` → curl 访问内网 IP
+      `192.168.31.37:8787` 被代理拦掉、显示不可达；加 `--noproxy '*'` 后 2.8ms 返回 200。
+      **排查「不可达」先看代理变量**，别急着怀疑服务端或防火墙
+    - `/tmp` 在 Git Bash 与 Node 里**不是同一个目录**：bash 当 Unix 路径，
+      node 的 `require('/tmp/x.json')` 按当前盘符解析成 `D:\tmp\x.json` → `MODULE_NOT_FOUND`。
+      跨工具传文件一律用系统临时目录的**绝对 Windows 路径**
 
 ## 服务端 · 第三轮：接豆包（火山方舟）
 - 已接真实豆包并端到端联调通过：端点 `https://ark.cn-beijing.volces.com/api/v3`，模型 `doubao-seed-2-1-lite-260915`（账号已开通）
