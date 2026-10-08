@@ -1,0 +1,210 @@
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: 100%;
+  white-space: nowrap;
+  padding: 20rpx 0 12rpx;
+  background: rgba(245, 247, 244, 0.97);
+  backdrop-filter: blur(16rpx);
+}
+
+.tabs__inner {
+  display: flex;
+  flex-direction: row;
+  gap: 14rpx;
+  padding: 0 32rpx;
+}
+
+.tabs__item {
+  flex: 0 0 auto;
+  padding: 16rpx 32rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E6EBE6;
+  font-size: 26rpx;
+  color: #5A6A61;
+  line-height: 1.3;
+}
+
+.tabs__item.is-on {
+  background: #2E6B4F;
+  border-color: #2E6B4F;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+/* ---------------- 文档块 ---------------- */
+.doc {
+  margin-top: 26rpx;
+  padding: 36rpx 32rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E9EDE8;
+  border-radius: 28rpx;
+  box-shadow: 0 2rpx 8rpx rgba(28, 56, 41, 0.04);
+}
+
+.doc__icon {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 26rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.doc__icon--warn { background: #FAF2E4; }
+.doc__icon--green { background: #E8F1EC; }
+
+.doc__title {
+  margin-top: 24rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #17251D;
+  letter-spacing: 1rpx;
+}
+
+.doc__para {
+  margin-top: 22rpx;
+  font-size: 26rpx;
+  color: #4A5A51;
+  line-height: 1.82;
+}
+
+.doc__btn {
+  margin-top: 32rpx;
+  height: 88rpx;
+  border-radius: 999rpx;
+  background: #FBEDE9;
+  color: #C4553F;
+  font-size: 27rpx;
+  font-weight: 600;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.doc__btn:active {
+  background: #F6DFD9;
+}
+
+/* ---------------- 特殊人群 ---------------- */
+.sp {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 18rpx 0;
+}
+
+.sp__dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #CE8552;
+  margin-top: 16rpx;
+  flex: 0 0 auto;
+}
+
+.sp__text {
+  flex: 1;
+  font-size: 26rpx;
+  color: #4A5A51;
+  line-height: 1.78;
+}
+
+/* ---------------- 反馈 ---------------- */
+.fb {
+  width: 100%;
+  height: 180rpx;
+  font-size: 27rpx;
+  color: #17251D;
+  line-height: 1.7;
+}
+
+.fb__ph {
+  color: #ADB7B0;
+  font-size: 26rpx;
+}
+
+.fb__foot {
+  margin-top: 22rpx;
+  padding-top: 22rpx;
+  border-top: 1rpx solid #F1F3F0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fb__contact {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10rpx;
+  font-size: 25rpx;
+  color: #93A099;
+}
+
+.fb__submit {
+  height: 72rpx;
+  padding: 0 40rpx;
+  border-radius: 999rpx;
+  background: #E6EBE6;
+  color: #A0ABA4;
+  font-size: 26rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fb__submit.is-on {
+  background: #2E6B4F;
+  color: #FFFFFF;
+}
+
+.fb__submit.is-on:active {
+  background: #21503A;
+}
+
+/* ---------------- 关于 ---------------- */
+.about {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.about__logo {
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 32rpx;
+  background: linear-gradient(150deg, #3E8563 0%, #21503A 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.about__name {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #17251D;
+  letter-spacing: 3rpx;
+}
+
+.about__desc {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #7C8A80;
+  line-height: 1.55;
+}
+
+.about__ver {
+  margin-top: 10rpx;
+  font-size: 21rpx;
+  color: #A3AEA7;
+}

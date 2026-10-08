@@ -1,0 +1,151 @@
+<view class="page">
+
+  <!-- 未测评 -->
+  <view wx:if="{{!hasProfile}}" class="container">
+    <view class="empty">
+      <icon name="clipboard" size="{{110}}" color="#C6D2CA" weight="{{1.4}}" />
+      <view class="empty-text">还没有你的体质档案</view>
+      <view class="empty-sub">完成 10 道选择题，约 90 秒即可生成</view>
+      <view class="btn btn-primary empty-btn" bindtap="goAssess">
+        <icon name="sparkle" size="{{30}}" color="#FFFFFF" weight="{{1.8}}" />
+        <text>开始体质测评</text>
+      </view>
+    </view>
+    <view class="disclaimer">
+      <icon name="info" size="{{28}}" color="#98A69C" weight="{{1.7}}" />
+      <text class="disclaimer__text">本小程序仅提供日常养生茶饮参考，不构成医疗建议，不替代专业医疗诊断与治疗。</text>
+    </view>
+  </view>
+
+  <block wx:else>
+    <!-- 结果主卡 -->
+    <view class="result-hero" style="background:linear-gradient(150deg, {{c.soft}} 0%, #FFFFFF 72%)">
+      <view class="result-hero__row">
+        <view class="result-hero__badge" style="background:{{c.color}}">
+          <icon name="{{c.icon}}" size="{{44}}" color="#FFFFFF" weight="{{1.6}}" />
+        </view>
+        <view class="result-hero__label">主导体质</view>
+      </view>
+      <view class="result-hero__name">{{c.name}}</view>
+      <view class="result-hero__short">{{c.short}}</view>
+      <view class="result-hero__meta">
+        <view class="result-hero__pill" style="background:{{c.soft}};color:{{c.color}}">
+          {{profile.levelText}}
+        </view>
+        <view wx:if="{{secondary}}" class="result-hero__pill result-hero__pill--plain">
+          兼夹 {{secondary.name}}
+        </view>
+        <view class="result-hero__date">{{seasonName}} · 测评结果</view>
+      </view>
+      <view class="result-hero__desc">{{c.brief}}</view>
+      <view
+        wx:if="{{basicTags.length}}"
+        class="result-hero__tags"
+      >
+        <view wx:for="{{basicTags}}" wx:key="*this" class="mini-tag">{{item}}</view>
+      </view>
+    </view>
+
+    <view class="container">
+
+      <!-- 风险提示 -->
+      <view wx:if="{{risk}}" class="risk risk--{{risk.tone}}">
+        <icon name="alert" size="{{32}}" color="{{risk.tone === 'danger' ? '#C4553F' : '#B9873A'}}" weight="{{1.7}}" />
+        <text class="risk__text">{{risk.text}}</text>
+      </view>
+
+      <!-- 分布 -->
+      <view class="section-head">
+        <view class="section-title">体质倾向分布</view>
+        <view class="section-more" bindtap="goAssess">
+          <text>重新测评</text>
+          <icon name="refresh" size="{{24}}" color="#93A099" />
+        </view>
+      </view>
+      <view class="card">
+        <view class="bar" wx:for="{{ranking}}" wx:key="id">
+          <view class="bar__name">{{item.name}}</view>
+          <view class="bar__track">
+            <view class="bar__fill" style="width:{{item.percent}}%;background:{{item.color}}"></view>
+          </view>
+          <view class="bar__val">{{item.percent}}%</view>
+        </view>
+        <view class="bar-tip">百分比为该体质倾向度的相对参考值，不等于医学诊断结论。</view>
+      </view>
+
+      <!-- 特征 -->
+      <view class="section-head">
+        <view class="section-title">体质特征</view>
+      </view>
+      <view class="card">
+        <view class="feat" wx:for="{{c.features}}" wx:key="*this">
+          <view class="feat__dot" style="background:{{c.color}}"></view>
+          <text class="feat__text">{{item}}</text>
+        </view>
+        <view class="divider"></view>
+        <view class="kv">
+          <text class="kv__k">常见成因</text>
+          <text class="kv__v">{{c.causes}}</text>
+        </view>
+        <view class="kv">
+          <text class="kv__k">调理原则</text>
+          <text class="kv__v">{{c.principle}}</text>
+        </view>
+        <view class="kv">
+          <text class="kv__k">饮茶方向</text>
+          <text class="kv__v">{{c.teaAdvice}}</text>
+        </view>
+      </view>
+
+      <!-- 推荐茶方 -->
+      <view class="section-head">
+        <view class="section-title">{{seasonName}}适配茶方</view>
+        <view class="section-more" bindtap="goTeaList">
+          <text>全部茶方</text>
+          <icon name="chevronRight" size="{{24}}" color="#93A099" />
+        </view>
+      </view>
+      <view class="tea-list">
+        <view class="tea-list__item" wx:for="{{recommend}}" wx:key="id">
+          <tea-card tea="{{item}}" variant="row" bind:select="openTea" />
+        </view>
+      </view>
+
+      <!-- 生活建议 -->
+      <view class="section-head">
+        <view class="section-title">日常生活建议</view>
+      </view>
+      <view class="card">
+        <view class="life" wx:for="{{c.life}}" wx:key="*this">
+          <view class="life__idx">{{index + 1}}</view>
+          <text class="life__text">{{item}}</text>
+        </view>
+      </view>
+
+      <!-- 操作 -->
+      <view class="actions">
+        <view class="btn btn-primary actions__main" bindtap="goChat">
+          <icon name="chat" size="{{32}}" color="#FFFFFF" weight="{{1.8}}" />
+          <text>问顾问怎么调整</text>
+        </view>
+      </view>
+      <view class="actions actions--sub">
+        <view class="btn btn-light actions__half" bindtap="goConstitutionDetail">
+          <icon name="book" size="{{30}}" color="#2E6B4F" weight="{{1.7}}" />
+          <text>体质科普</text>
+        </view>
+        <view class="btn btn-light actions__half" bindtap="copySummary">
+          <icon name="edit" size="{{30}}" color="#2E6B4F" weight="{{1.7}}" />
+          <text>复制档案</text>
+        </view>
+      </view>
+
+      <view class="disclaimer">
+        <icon name="info" size="{{28}}" color="#98A69C" weight="{{1.7}}" />
+        <text class="disclaimer__text">本测评结果与茶饮建议仅作日常养生参考，不替代专业医疗建议。如有明确的身体不适或疾病问题，请及时前往正规医疗机构就诊。</text>
+      </view>
+
+      <view class="page-bottom-gap"></view>
+    </view>
+  </block>
+</view>

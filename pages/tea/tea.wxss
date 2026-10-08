@@ -1,0 +1,142 @@
+/* ---------------- 顶部 ---------------- */
+.tea-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 20rpx 0 14rpx;
+  background: rgba(245, 247, 244, 0.97);
+  backdrop-filter: blur(16rpx);
+}
+
+.search {
+  margin: 0 32rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14rpx;
+  height: 84rpx;
+  padding: 0 26rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E6EBE6;
+}
+
+.search__input {
+  flex: 1;
+  font-size: 27rpx;
+  color: #17251D;
+}
+
+.search__ph {
+  color: #ADB7B0;
+  font-size: 26rpx;
+}
+
+.search__clear {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: #C6D0C9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mine-hint {
+  margin: 18rpx 32rpx 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 18rpx;
+  background: #E8F1EC;
+  font-size: 24rpx;
+  color: #2E6B4F;
+}
+
+.mine-hint:active {
+  background: #DCEAE2;
+}
+
+.filters {
+  margin-top: 20rpx;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.filters__inner {
+  display: flex;
+  flex-direction: row;
+  gap: 14rpx;
+  padding: 0 32rpx;
+}
+
+.filter {
+  flex: 0 0 auto;
+  padding: 14rpx 30rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E6EBE6;
+  font-size: 25rpx;
+  color: #5A6A61;
+  line-height: 1.3;
+}
+
+.filter.is-on {
+  background: #2E6B4F;
+  border-color: #2E6B4F;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.filter:active {
+  opacity: 0.85;
+}
+
+/* ---------------- 列表 ---------------- */
+.list-meta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 26rpx 4rpx 20rpx;
+  font-size: 23rpx;
+  color: #93A099;
+}
+
+.list-meta__clear {
+  color: #2E6B4F;
+}
+
+.tea-list__item {
+  margin-bottom: 20rpx;
+}
+
+/* ---------------- 空态 ---------------- */
+.empty-sub {
+  margin-top: 12rpx;
+  font-size: 25rpx;
+  color: #A3AEA7;
+}
+
+.empty-btn {
+  margin-top: 36rpx;
+  gap: 12rpx;
+  padding: 0 48rpx;
+}
+
+/* ---------------- 底部说明 ---------------- */
+.tea-note {
+  margin-top: 40rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 18rpx;
+  background: #F1F4F1;
+  font-size: 22rpx;
+  color: #8B978F;
+  line-height: 1.7;
+}

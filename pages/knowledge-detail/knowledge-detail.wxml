@@ -1,0 +1,148 @@
+<!-- 体质详情 -->
+<view class="page" wx:if="{{type === 'constitution' && c}}">
+  <view class="khero" style="background-color:{{c.color}}">
+    <view class="khero__shade"></view>
+    <view class="khero__art">
+      <icon name="{{c.icon}}" size="{{150}}" color="rgba(255,255,255,0.9)" weight="{{1.1}}" />
+    </view>
+    <view class="khero__content">
+      <view wx:if="{{isMine}}" class="khero__badge">
+        <icon name="check" size="{{22}}" color="#FFFFFF" weight="{{2.4}}" />
+        <text>我的体质</text>
+      </view>
+      <view class="khero__name">{{c.name}}</view>
+      <view class="khero__short">{{c.short}}</view>
+      <view class="khero__desc">{{c.brief}}</view>
+    </view>
+  </view>
+
+  <view class="container">
+    <view class="section-head">
+      <view class="section-title">典型特征</view>
+    </view>
+    <view class="card">
+      <view class="feat" wx:for="{{c.features}}" wx:key="*this">
+        <view class="feat__dot" style="background:{{c.color}}"></view>
+        <text class="feat__text">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="section-head">
+      <view class="section-title">成因与调理方向</view>
+    </view>
+    <view class="card">
+      <view class="kv">
+        <text class="kv__k">常见成因</text>
+        <text class="kv__v">{{c.causes}}</text>
+      </view>
+      <view class="divider"></view>
+      <view class="kv">
+        <text class="kv__k">调理原则</text>
+        <text class="kv__v">{{c.principle}}</text>
+      </view>
+      <view class="divider"></view>
+      <view class="kv">
+        <text class="kv__k">饮茶方向</text>
+        <text class="kv__v">{{c.teaAdvice}}</text>
+      </view>
+    </view>
+
+    <view class="section-head">
+      <view class="section-title">日常调养</view>
+    </view>
+    <view class="card">
+      <view class="life" wx:for="{{c.life}}" wx:key="*this">
+        <view class="life__idx">{{index + 1}}</view>
+        <text class="life__text">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="section-head">
+      <view class="section-title">{{seasonName}}适配茶方</view>
+    </view>
+    <view class="tea-list">
+      <view class="tea-list__item" wx:for="{{recommend}}" wx:key="id">
+        <tea-card tea="{{item}}" variant="row" bind:select="openTea" />
+      </view>
+    </view>
+
+    <view class="disclaimer">
+      <icon name="info" size="{{28}}" color="#98A69C" weight="{{1.7}}" />
+      <text class="disclaimer__text">以上内容仅作日常养生参考，不替代专业医疗建议，也不能作为体质辨识的诊断依据。</text>
+    </view>
+
+    <view class="bottom-bar-gap"></view>
+  </view>
+
+  <view class="bottom-bar">
+    <view class="bottom-bar__inner">
+      <view class="bottom-bar__main" bindtap="askAdvisor">
+        <icon name="chat" size="{{32}}" color="#FFFFFF" weight="{{1.8}}" />
+        <text class="bottom-bar__main-label">问顾问 {{c.name}}怎么喝</text>
+      </view>
+    </view>
+    <view class="safe-bottom"></view>
+  </view>
+</view>
+
+<!-- 食材详情 -->
+<view class="page" wx:elif="{{type === 'ingredient' && ing}}">
+  <view class="ihero">
+    <view class="ihero__icon">
+      <icon name="leaf" size="{{56}}" color="#2E6B4F" weight="{{1.6}}" />
+    </view>
+    <view class="ihero__name">{{ing.name}}</view>
+    <view class="ihero__row">
+      <view class="ihero__pill">{{ing.nature}}</view>
+      <view class="ihero__pill">{{ing.meridian}}</view>
+    </view>
+  </view>
+
+  <view class="container">
+    <view class="section-head">
+      <view class="section-title">主要作用</view>
+    </view>
+    <view class="card">
+      <view class="feat">
+        <view class="feat__check">
+          <icon name="check" size="{{24}}" color="#FFFFFF" weight="{{2.6}}" />
+        </view>
+        <text class="feat__text">{{ing.effect}}</text>
+      </view>
+      <view class="divider"></view>
+      <view class="kv">
+        <text class="kv__k">适用场景</text>
+        <text class="kv__v">{{ing.use}}</text>
+      </view>
+    </view>
+
+    <view class="section-head">
+      <view class="section-title">需要留意</view>
+    </view>
+    <view class="caution">
+      <view class="caution__item">
+        <icon name="alert" size="{{28}}" color="#B9873A" weight="{{1.7}}" />
+        <text class="caution__text">{{ing.caution}}</text>
+      </view>
+    </view>
+
+    <block wx:if="{{related.length}}">
+      <view class="section-head">
+        <view class="section-title">含{{ing.name}}的茶方</view>
+        <view class="section-more">{{related.length}} 款</view>
+      </view>
+      <view class="tea-list">
+        <view class="tea-list__item" wx:for="{{related}}" wx:key="id">
+          <tea-card tea="{{item}}" variant="row" bind:select="openTea" />
+        </view>
+      </view>
+    </block>
+
+    <view class="disclaimer">
+      <icon name="info" size="{{28}}" color="#98A69C" weight="{{1.7}}" />
+      <text class="disclaimer__text">食材说明仅作日常养生参考，不替代专业医疗建议。特殊人群请先咨询医师。</text>
+    </view>
+
+    <view class="page-bottom-gap"></view>
+  </view>
+</view>

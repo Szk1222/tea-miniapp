@@ -1,0 +1,9 @@
+.teal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.teal-icon__inner {
+  display: block;
+}

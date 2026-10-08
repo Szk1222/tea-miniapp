@@ -1,0 +1,3 @@
+<view class="teal-icon" style="{{wrapStyle}}">
+  <view class="teal-icon__inner" style="{{innerStyle}}"></view>
+</view>

@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "我的茶方",
+  "navigationBarBackgroundColor": "#F5F7F4",
+  "usingComponents": {
+    "icon": "../../components/icon/icon",
+    "tea-card": "../../components/tea-card/tea-card"
+  }
+}

@@ -1,0 +1,136 @@
+<view class="chat-page">
+
+  <!-- 顶部状态条 -->
+  <view class="chat-top">
+    <view class="chat-top__left">
+      <view class="live-dot"></view>
+      <text class="chat-top__title">智能养生顾问</text>
+      <view wx:if="{{mainName}}" class="chat-top__tag">{{mainName}}</view>
+      <view class="chat-top__tag chat-top__tag--mode {{aiOn ? 'is-ai' : ''}}" bindtap="toggleAi">{{aiOn ? 'AI 增强' : '本地模式'}}</view>
+    </view>
+    <view class="chat-top__reset" bindtap="resetChat">
+      <icon name="refresh" size="{{28}}" color="#93A099" weight="{{1.7}}" />
+      <text class="chat-top__reset-label">清空</text>
+    </view>
+  </view>
+
+  <!-- 消息区 -->
+  <scroll-view
+    class="chat-scroll"
+    scroll-y
+    scroll-into-view="{{scrollTo}}"
+    scroll-with-animation
+    enable-flex
+  >
+    <view class="chat-list">
+
+      <block wx:for="{{messages}}" wx:key="id">
+
+        <!-- 用户消息 -->
+        <view wx:if="{{item.role === 'user'}}" class="msg msg--user" id="msg-{{item.id}}">
+          <view class="bubble bubble--user">{{item.text}}</view>
+          <view class="avatar avatar--user">
+            <icon name="user" size="{{34}}" color="#FFFFFF" weight="{{1.9}}" />
+          </view>
+        </view>
+
+        <!-- 顾问文字 -->
+        <view wx:elif="{{item.type === 'text'}}" class="msg msg--bot" id="msg-{{item.id}}">
+          <view class="avatar avatar--bot">
+            <icon name="leaf" size="{{34}}" color="#2E6B4F" weight="{{1.7}}" />
+          </view>
+          <view class="bubble bubble--bot {{item.small ? 'bubble--small' : ''}}">
+            <text class="bubble__text">{{item.text}}</text>
+            <view wx:if="{{item.typing}}" class="dots">
+              <view class="dot"></view>
+              <view class="dot dot--2"></view>
+              <view class="dot dot--3"></view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 风险 / 免责提示 -->
+        <view wx:elif="{{item.type === 'notice'}}" class="msg msg--bot" id="msg-{{item.id}}">
+          <view class="avatar avatar--bot">
+            <icon name="leaf" size="{{34}}" color="#2E6B4F" weight="{{1.7}}" />
+          </view>
+          <view class="note note--{{item.tone}}">
+            <icon name="alert" size="{{30}}" color="{{item.tone === 'danger' ? '#C4553F' : '#B9873A'}}" weight="{{1.7}}" />
+            <text class="note__text">{{item.text}}</text>
+          </view>
+        </view>
+
+        <!-- 茶方推荐卡片 -->
+        <view wx:elif="{{item.type === 'teas'}}" class="msg msg--bot msg--wide" id="msg-{{item.id}}">
+          <view class="avatar avatar--bot">
+            <icon name="leaf" size="{{34}}" color="#2E6B4F" weight="{{1.7}}" />
+          </view>
+          <view class="tea-list">
+            <view class="tea-list__item" wx:for="{{item.teas}}" wx:for-item="teaItem" wx:key="id">
+              <tea-card tea="{{teaItem}}" variant="row" bind:select="openTea" />
+            </view>
+          </view>
+        </view>
+
+        <!-- 测评引导卡 -->
+        <view wx:elif="{{item.type === 'cta'}}" class="msg msg--bot" id="msg-{{item.id}}">
+          <view class="avatar avatar--bot">
+            <icon name="leaf" size="{{34}}" color="#2E6B4F" weight="{{1.7}}" />
+          </view>
+          <view class="cta-card">
+            <view class="cta-card__top">
+              <view class="cta-card__icon">
+                <icon name="clipboard" size="{{38}}" color="#FFFFFF" weight="{{1.8}}" />
+              </view>
+              <view class="flex-1">
+                <view class="cta-card__title">{{item.title}}</view>
+                <view class="cta-card__desc">{{item.desc}}</view>
+              </view>
+            </view>
+            <view class="cta-card__btn" data-action="{{item.action}}" bindtap="onCtaTap">{{item.label}}</view>
+          </view>
+        </view>
+
+        <!-- 快捷选项 -->
+        <view wx:elif="{{item.type === 'chips'}}" class="msg msg--chips" id="msg-{{item.id}}">
+          <view class="chips">
+            <view
+              class="chip"
+              wx:for="{{item.items}}"
+              wx:for-item="c"
+              wx:key="label"
+              data-item="{{c}}"
+              bindtap="onChipTap"
+            >{{c.label}}</view>
+          </view>
+        </view>
+
+      </block>
+
+    </view>
+    <view class="chat-bottom-space"></view>
+  </scroll-view>
+
+  <!-- 输入区 -->
+  <view class="composer {{focus ? 'is-focus' : ''}}">
+    <view class="composer__bar">
+      <input
+        class="composer__input"
+        value="{{input}}"
+        placeholder="说说最近的感受，比如「总觉得累」"
+        placeholder-class="composer__ph"
+        confirm-type="send"
+        cursor-spacing="24"
+        bindinput="onInput"
+        bindconfirm="onSend"
+        bindfocus="onFocus"
+        bindblur="onBlur"
+      />
+      <view class="composer__send {{input ? 'is-on' : ''}}" bindtap="onSend">
+        <icon name="send" size="{{34}}" color="{{input ? '#FFFFFF' : '#BCC7C0'}}" weight="{{1.7}}" />
+      </view>
+    </view>
+    <view wx:if="{{!focus}}" class="composer__tabbar-gap"></view>
+  </view>
+
+</view>

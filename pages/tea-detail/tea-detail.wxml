@@ -1,0 +1,182 @@
+<view class="page" wx:if="{{tea}}">
+
+  <!-- 主视觉 -->
+  <view class="hero hero--{{tea.tone}}">
+    <view class="hero__art">
+      <icon name="tea" size="{{140}}" color="rgba(255,255,255,0.95)" weight="{{1.1}}" />
+    </view>
+    <view class="hero__content">
+      <view class="hero__badges">
+        <view class="hero__badge" bindtap="goConstitution">
+          <icon name="{{c.icon}}" size="{{24}}" color="#FFFFFF" weight="{{1.8}}" />
+          <text>{{c.name}}适配</text>
+        </view>
+        <view wx:if="{{seasonFit}}" class="hero__badge hero__badge--soft">{{seasonName}}适宜</view>
+      </view>
+      <view class="hero__name">{{tea.name}}</view>
+      <view class="hero__sub">{{tea.subtitle}}</view>
+    </view>
+  </view>
+
+  <view class="container">
+
+    <!-- 性味 -->
+    <view class="facts">
+      <view class="facts__item">
+        <view class="facts__label">性味</view>
+        <view class="facts__value">{{tea.nature}}</view>
+      </view>
+      <view class="facts__line"></view>
+      <view class="facts__item">
+        <view class="facts__label">口感</view>
+        <view class="facts__value">{{tea.taste}}</view>
+      </view>
+      <view class="facts__line"></view>
+      <view class="facts__item">
+        <view class="facts__label">场景</view>
+        <view class="facts__value ellipsis">{{tea.scenes[0]}}</view>
+      </view>
+    </view>
+
+    <!-- 配方 -->
+    <view class="section-head">
+      <view class="section-title">配方组成</view>
+      <view class="section-more">{{tea.ingredients.length}} 味食材</view>
+    </view>
+    <view class="card">
+      <view class="ing" wx:for="{{tea.ingredients}}" wx:key="name">
+        <view class="ing__icon">
+          <icon name="leaf" size="{{30}}" color="#4E9A72" weight="{{1.7}}" />
+        </view>
+        <view class="ing__name">{{item.name}}</view>
+        <view class="ing__role">{{item.role}}</view>
+        <view class="ing__amount">{{item.amount}}</view>
+      </view>
+      <view class="ing-note">
+        <icon name="info" size="{{26}}" color="#98A69C" weight="{{1.7}}" />
+        <text>以上为单人一次日常养生参考用量，请勿自行加倍。</text>
+      </view>
+    </view>
+
+    <!-- 功效 -->
+    <view class="section-head">
+      <view class="section-title">核心作用</view>
+    </view>
+    <view class="card">
+      <view class="feat" wx:for="{{tea.effects}}" wx:key="*this">
+        <view class="feat__check">
+          <icon name="check" size="{{24}}" color="#FFFFFF" weight="{{2.6}}" />
+        </view>
+        <text class="feat__text">{{item}}</text>
+      </view>
+    </view>
+
+    <!-- 冲泡 -->
+    <view class="section-head">
+      <view class="section-title">冲泡方法</view>
+    </view>
+    <view class="card">
+      <view class="brew-meta">
+        <view class="brew-meta__item">
+          <icon name="droplet" size="{{30}}" color="#4E86A8" weight="{{1.7}}" />
+          <view class="brew-meta__body">
+            <view class="brew-meta__label">用水</view>
+            <view class="brew-meta__value">{{tea.brew.water}}</view>
+          </view>
+        </view>
+        <view class="brew-meta__item">
+          <icon name="clock" size="{{30}}" color="#B9873A" weight="{{1.7}}" />
+          <view class="brew-meta__body">
+            <view class="brew-meta__label">时间</view>
+            <view class="brew-meta__value">{{tea.brew.time}}</view>
+          </view>
+        </view>
+        <view class="brew-meta__item">
+          <icon name="cup" size="{{30}}" color="#4E9A72" weight="{{1.7}}" />
+          <view class="brew-meta__body">
+            <view class="brew-meta__label">茶具</view>
+            <view class="brew-meta__value">{{tea.brew.tools}}</view>
+          </view>
+        </view>
+      </view>
+      <view class="divider"></view>
+      <view class="step" wx:for="{{tea.brew.steps}}" wx:key="*this">
+        <view class="step__idx">{{index + 1}}</view>
+        <text class="step__text">{{item}}</text>
+      </view>
+      <view class="brew-foot">
+        <view class="brew-foot__item">
+          <icon name="sun" size="{{28}}" color="#B9873A" weight="{{1.7}}" />
+          <text>最佳时段：{{tea.brew.best}}</text>
+        </view>
+        <view class="brew-foot__item">
+          <icon name="refresh" size="{{28}}" color="#4E9A72" weight="{{1.7}}" />
+          <text>建议频次：{{tea.brew.frequency}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 场景 -->
+    <view class="section-head">
+      <view class="section-title">适配场景</view>
+    </view>
+    <view class="scene-row">
+      <view class="scene" wx:for="{{tea.scenes}}" wx:key="*this">
+        <icon name="sparkle" size="{{26}}" color="#2E6B4F" weight="{{1.7}}" />
+        <text>{{item}}</text>
+      </view>
+    </view>
+
+    <!-- 注意 -->
+    <view class="section-head">
+      <view class="section-title">注意事项</view>
+    </view>
+    <view class="caution">
+      <view class="caution__item" wx:for="{{tea.caution}}" wx:key="*this">
+        <icon name="alert" size="{{28}}" color="#B9873A" weight="{{1.7}}" />
+        <text class="caution__text">{{item}}</text>
+      </view>
+    </view>
+
+    <!-- 相关 -->
+    <block wx:if="{{related.length}}">
+      <view class="section-head">
+        <view class="section-title">同类推荐</view>
+      </view>
+      <view class="tea-list">
+        <view class="tea-list__item" wx:for="{{related}}" wx:key="id">
+          <tea-card tea="{{item}}" variant="row" bind:select="openTea" />
+        </view>
+      </view>
+    </block>
+
+    <view class="disclaimer">
+      <icon name="info" size="{{28}}" color="#98A69C" weight="{{1.7}}" />
+      <text class="disclaimer__text">本茶方仅作日常养生参考，不替代专业医疗建议。饮用后如有不适请立即停用并咨询医师。</text>
+    </view>
+
+    <view class="bottom-bar-gap"></view>
+  </view>
+
+  <!-- 底部操作 -->
+  <view class="bottom-bar">
+    <view class="bottom-bar__inner">
+      <view class="bottom-bar__icon-btn" bindtap="toggleFav">
+        <icon name="bookmark" size="{{40}}" color="{{favorite ? '#B9873A' : '#84928A'}}" weight="{{1.7}}" filled="{{favorite}}" />
+        <text class="bottom-bar__icon-label {{favorite ? 'is-on' : ''}}">{{favorite ? '已收藏' : '收藏'}}</text>
+      </view>
+      <view class="bottom-bar__icon-btn bottom-bar__spaced" bindtap="copyRecipe">
+        <icon name="edit" size="{{40}}" color="#84928A" weight="{{1.7}}" />
+        <text class="bottom-bar__icon-label">复制配方</text>
+      </view>
+      <button class="bottom-bar__share bottom-bar__spaced" open-type="share">
+        <icon name="share" size="{{36}}" color="#84928A" weight="{{1.7}}" />
+      </button>
+      <view class="bottom-bar__main bottom-bar__spaced" bindtap="askAdvisor">
+        <icon name="chat" size="{{32}}" color="#FFFFFF" weight="{{1.8}}" />
+        <text class="bottom-bar__main-label">问顾问是否适合我</text>
+      </view>
+    </view>
+    <view class="safe-bottom"></view>
+  </view>
+</view>

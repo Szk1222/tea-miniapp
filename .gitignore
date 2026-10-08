@@ -1,0 +1,18 @@
+# 依赖（本项目服务端零依赖，仅防误提交）
+node_modules/
+
+# 敏感配置：绝不可提交
+server/.env
+
+# 构建缓存（向量索引等）
+server/.cache/
+
+# 开发者工具本地个人配置（导入项目时自动生成，含本机偏好，不建议提交）
+project.private.config.json
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

@@ -1,0 +1,74 @@
+<view class="page">
+
+  <!-- 顶部搜索与筛选 -->
+  <view class="tea-top">
+    <view class="search">
+      <icon name="search" size="{{34}}" color="#A0ABA4" weight="{{1.8}}" />
+      <input
+        class="search__input"
+        value="{{keyword}}"
+        placeholder="搜索茶方、食材或体质，如「祛湿」"
+        placeholder-class="search__ph"
+        confirm-type="search"
+        bindinput="onInput"
+      />
+      <view wx:if="{{keyword}}" class="search__clear" bindtap="clearKeyword">
+        <icon name="close" size="{{26}}" color="#FFFFFF" weight="{{2.2}}" />
+      </view>
+    </view>
+
+    <view wx:if="{{myId}}" class="mine-hint" bindtap="pickMine">
+      <icon name="target" size="{{28}}" color="#2E6B4F" weight="{{1.8}}" />
+      <text>只看适配我「{{myName}}」的茶方</text>
+      <icon name="chevronRight" size="{{24}}" color="#7FA391" />
+    </view>
+
+    <scroll-view class="filters" scroll-x enable-flex show-scrollbar="{{false}}">
+      <view class="filters__inner">
+        <view
+          wx:for="{{filters}}"
+          wx:key="id"
+          class="filter {{filter === item.id ? 'is-on' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="pickFilter"
+        >{{item.name}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="container">
+    <view class="list-meta">
+      <text>共 {{list.length}} 款茶方</text>
+      <text wx:if="{{filter !== 'all' || keyword}}" class="list-meta__clear" bindtap="clearKeyword">重置搜索</text>
+    </view>
+
+    <view wx:if="{{list.length}}" class="tea-list">
+      <view class="tea-list__item" wx:for="{{list}}" wx:key="id">
+        <tea-card
+          tea="{{item}}"
+          variant="row"
+          showConstitution="{{filter === 'all'}}"
+          constitutionName="{{item.constitutionName}}"
+          bind:select="openTea"
+        />
+      </view>
+    </view>
+
+    <view wx:else class="empty">
+      <icon name="search" size="{{100}}" color="#C6D2CA" weight="{{1.4}}" />
+      <view class="empty-text">没有找到匹配的茶方</view>
+      <view class="empty-sub">换个关键词试试，或先做一次体质测评</view>
+      <view class="btn btn-light empty-btn" bindtap="goAssess">
+        <icon name="clipboard" size="{{30}}" color="#2E6B4F" weight="{{1.8}}" />
+        <text>开始体质测评</text>
+      </view>
+    </view>
+
+    <view class="tea-note">
+      <icon name="info" size="{{26}}" color="#98A69C" weight="{{1.7}}" />
+      <text>全部茶方食材均取自药食同源目录，用量为日常养生参考剂量，不构成医疗建议。</text>
+    </view>
+
+    <view class="tabbar-gap"></view>
+  </view>
+</view>

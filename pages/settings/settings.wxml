@@ -1,0 +1,89 @@
+<view class="page">
+
+  <scroll-view class="tabs" scroll-x enable-flex show-scrollbar="{{false}}">
+    <view class="tabs__inner">
+      <view class="tabs__item {{tab === 'disclaimer' ? 'is-on' : ''}}" data-tab="disclaimer" bindtap="switchTab">免责声明</view>
+      <view class="tabs__item {{tab === 'privacy' ? 'is-on' : ''}}" data-tab="privacy" bindtap="switchTab">隐私政策</view>
+      <view class="tabs__item {{tab === 'special' ? 'is-on' : ''}}" data-tab="special" bindtap="switchTab">特殊人群</view>
+    </view>
+  </scroll-view>
+
+  <view class="container">
+
+    <block wx:if="{{tab === 'disclaimer'}}">
+      <view class="doc">
+        <view class="doc__icon doc__icon--warn">
+          <icon name="alert" size="{{40}}" color="#B9873A" weight="{{1.7}}" />
+        </view>
+        <view class="doc__title">请先阅读</view>
+        <view class="doc__para" wx:for="{{disclaimer}}" wx:key="*this">{{item}}</view>
+      </view>
+    </block>
+
+    <block wx:elif="{{tab === 'privacy'}}">
+      <view class="doc">
+        <view class="doc__icon doc__icon--green">
+          <icon name="lock" size="{{40}}" color="#2E6B4F" weight="{{1.7}}" />
+        </view>
+        <view class="doc__title">数据与隐私</view>
+        <view class="doc__para" wx:for="{{privacy}}" wx:key="*this">{{item}}</view>
+        <view class="doc__btn" bindtap="clearData">
+          <icon name="trash" size="{{30}}" color="#C4553F" weight="{{1.7}}" />
+          <text>清除我的全部本地数据</text>
+        </view>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view class="doc">
+        <view class="doc__icon doc__icon--warn">
+          <icon name="shield" size="{{40}}" color="#B9873A" weight="{{1.7}}" />
+        </view>
+        <view class="doc__title">特殊人群提示</view>
+        <view class="sp" wx:for="{{special}}" wx:key="*this">
+          <view class="sp__dot"></view>
+          <text class="sp__text">{{item}}</text>
+        </view>
+      </view>
+    </block>
+
+    <!-- 意见反馈 -->
+    <view class="section-head">
+      <view class="section-title">意见反馈</view>
+    </view>
+    <view class="card">
+      <textarea
+        class="fb"
+        value="{{feedback}}"
+        placeholder="说说你的建议，或希望增加的茶方与功能…"
+        placeholder-class="fb__ph"
+        maxlength="300"
+        bindinput="onFeedback"
+      />
+      <view class="fb__foot">
+        <view class="fb__contact" bindtap="copyContact">
+          <icon name="messageSquare" size="{{28}}" color="#93A099" weight="{{1.7}}" />
+          <text>联系邮箱</text>
+        </view>
+        <view class="fb__submit {{feedback ? 'is-on' : ''}}" bindtap="submitFeedback">提交反馈</view>
+      </view>
+    </view>
+
+    <!-- 关于 -->
+    <view class="section-head">
+      <view class="section-title">关于</view>
+    </view>
+    <view class="card about">
+      <view class="about__logo">
+        <icon name="leaf" size="{{44}}" color="#FFFFFF" weight="{{1.6}}" />
+      </view>
+      <view class="about__body">
+        <view class="about__name">茶历方</view>
+        <view class="about__desc">中医体质养生茶推荐 · 辨证施茶，一人一方</view>
+        <view class="about__ver">版本 v{{version}}</view>
+      </view>
+    </view>
+
+    <view class="page-bottom-gap"></view>
+  </view>
+</view>

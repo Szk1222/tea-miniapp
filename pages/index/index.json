@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "茶历方 · 养生茶",
+  "navigationBarBackgroundColor": "#F5F7F4",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": {
+    "icon": "../../components/icon/icon",
+    "tea-card": "../../components/tea-card/tea-card"
+  }
+}

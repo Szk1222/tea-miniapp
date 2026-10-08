@@ -1,0 +1,148 @@
+<view class="page">
+  <view class="container">
+
+    <!-- 档案头卡 -->
+    <view wx:if="{{profile}}" class="pcard">
+      <view class="pcard__row">
+        <view class="pcard__avatar" style="background:{{c.color}}">
+          <icon name="{{c.icon}}" size="{{52}}" color="#FFFFFF" weight="{{1.6}}" />
+        </view>
+        <view class="flex-1">
+          <view class="pcard__name">{{c.name}}</view>
+          <view class="pcard__meta">{{c.short}} · {{profile.levelText}}</view>
+        </view>
+        <view class="pcard__btn" bindtap="goResult">
+          <text>查看档案</text>
+          <icon name="chevronRight" size="{{24}}" color="#2E6B4F" />
+        </view>
+      </view>
+      <view class="pcard__stats">
+        <view class="pcard__stat" bindtap="goFavorites">
+          <view class="pcard__num">{{favCount}}</view>
+          <view class="pcard__label">收藏茶方</view>
+        </view>
+        <view class="pcard__vline"></view>
+        <view class="pcard__stat" bindtap="goHistory">
+          <view class="pcard__num">{{historyCount}}</view>
+          <view class="pcard__label">浏览记录</view>
+        </view>
+        <view class="pcard__vline"></view>
+        <view class="pcard__stat" bindtap="goAssess">
+          <view class="pcard__num">{{teaTotal}}</view>
+          <view class="pcard__label">茶方总数</view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="pcard pcard--empty">
+      <view class="pcard__row">
+        <view class="pcard__avatar pcard__avatar--empty">
+          <icon name="user" size="{{52}}" color="#8FA79A" weight="{{1.6}}" />
+        </view>
+        <view class="flex-1">
+          <view class="pcard__name">还没有体质档案</view>
+          <view class="pcard__meta">完成测评后即可获得个性化茶方推荐</view>
+        </view>
+      </view>
+      <view class="btn btn-primary pcard__cta" bindtap="goAssess">
+        <icon name="clipboard" size="{{30}}" color="#FFFFFF" weight="{{1.8}}" />
+        <text>开始体质测评</text>
+      </view>
+    </view>
+
+    <!-- 我的数据 -->
+    <view class="section-head">
+      <view class="section-title">我的数据</view>
+    </view>
+    <view class="card card-tight">
+      <view class="cell" bindtap="goFavorites">
+        <view class="cell__icon cell__icon--green">
+          <icon name="bookmark" size="{{34}}" color="#2E6B4F" weight="{{1.7}}" />
+        </view>
+        <view class="cell__title flex-1">我的收藏</view>
+        <view class="cell-value">{{favCount}} 款</view>
+        <icon name="chevronRight" size="{{26}}" color="#C6CFC9" />
+      </view>
+      <view class="cell" bindtap="goHistory">
+        <view class="cell__icon cell__icon--gold">
+          <icon name="history" size="{{34}}" color="#B9873A" weight="{{1.7}}" />
+        </view>
+        <view class="cell__title flex-1">浏览记录</view>
+        <view class="cell-value">{{historyCount}} 条</view>
+        <icon name="chevronRight" size="{{26}}" color="#C6CFC9" />
+      </view>
+      <view class="cell" bindtap="goAssess">
+        <view class="cell__icon cell__icon--blue">
+          <icon name="refresh" size="{{34}}" color="#4E7EA8" weight="{{1.7}}" />
+        </view>
+        <view class="cell__title flex-1">重新测评</view>
+        <view class="cell-value">{{profile ? '更新体质档案' : '尚未测评'}}</view>
+        <icon name="chevronRight" size="{{26}}" color="#C6CFC9" />
+      </view>
+    </view>
+
+    <!-- 养生工具 -->
+    <view class="section-head">
+      <view class="section-title">养生工具</view>
+    </view>
+    <view class="card card-tight">
+      <view class="cell" bindtap="goChat">
+        <view class="cell__icon cell__icon--green">
+          <icon name="chat" size="{{34}}" color="#2E6B4F" weight="{{1.7}}" />
+        </view>
+        <view class="cell__title flex-1">问茶顾问</view>
+        <view class="cell-value">按体质配茶</view>
+        <icon name="chevronRight" size="{{26}}" color="#C6CFC9" />
+      </view>
+      <view class="cell" bindtap="goKnowledge">
+        <view class="cell__icon cell__icon--green">
+          <icon name="book" size="{{34}}" color="#4E9A72" weight="{{1.7}}" />
+        </view>
+        <view class="cell__title flex-1">养生知识库</view>
+        <view class="cell-value">体质 · 食材 · 常识</view>
+        <icon name="chevronRight" size="{{26}}" color="#C6CFC9" />
+      </view>
+    </view>
+
+    <!-- 设置 -->
+    <view class="section-head">
+      <view class="section-title">其他</view>
+    </view>
+    <view class="card card-tight">
+      <view class="cell" bindtap="goSettings">
+        <view class="cell__icon cell__icon--plain">
+          <icon name="shield" size="{{34}}" color="#6E7C73" weight="{{1.7}}" />
+        </view>
+        <view class="cell__title flex-1">免责声明与隐私</view>
+        <icon name="chevronRight" size="{{26}}" color="#C6CFC9" />
+      </view>
+      <view class="cell" bindtap="clearData">
+        <view class="cell__icon cell__icon--plain">
+          <icon name="trash" size="{{34}}" color="#6E7C73" weight="{{1.7}}" />
+        </view>
+        <view class="cell__title flex-1">清除本地数据</view>
+        <icon name="chevronRight" size="{{26}}" color="#C6CFC9" />
+      </view>
+      <view class="cell">
+        <view class="cell__icon cell__icon--plain">
+          <icon name="info" size="{{34}}" color="#6E7C73" weight="{{1.7}}" />
+        </view>
+        <view class="cell__title flex-1">关于茶历方</view>
+        <view class="cell-value">v{{version}}</view>
+      </view>
+    </view>
+
+    <!-- 隐私说明 -->
+    <view class="privacy">
+      <icon name="lock" size="{{28}}" color="#8B978F" weight="{{1.7}}" />
+      <text class="privacy__text">体质信息、收藏与浏览记录全部保存在你本机，不会上传服务器，也不会用于任何其他用途。你可以随时在「清除本地数据」中删除全部记录。</text>
+    </view>
+
+    <view class="disclaimer">
+      <icon name="info" size="{{28}}" color="#98A69C" weight="{{1.7}}" />
+      <text class="disclaimer__text">茶历方仅提供日常养生茶饮参考，不构成医疗建议，不替代专业医疗诊断与治疗。</text>
+    </view>
+
+    <view class="tabbar-gap"></view>
+  </view>
+</view>

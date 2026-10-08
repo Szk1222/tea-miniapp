@@ -1,0 +1,317 @@
+/* ---------------- 结果主卡 ---------------- */
+.result-hero {
+  margin: 28rpx 32rpx 0;
+  padding: 40rpx 36rpx 36rpx;
+  border-radius: 36rpx;
+  border: 1rpx solid #E6EDE8;
+  box-shadow: 0 12rpx 36rpx rgba(28, 56, 41, 0.07);
+}
+
+.result-hero__row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.result-hero__badge {
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.result-hero__label {
+  font-size: 23rpx;
+  color: #7A887F;
+  letter-spacing: 2rpx;
+}
+
+.result-hero__name {
+  margin-top: 26rpx;
+  font-size: 60rpx;
+  font-weight: 600;
+  color: #17251D;
+  letter-spacing: 4rpx;
+  line-height: 1.2;
+}
+
+.result-hero__short {
+  margin-top: 8rpx;
+  font-size: 26rpx;
+  color: #6E7C73;
+  letter-spacing: 1rpx;
+}
+
+.result-hero__meta {
+  margin-top: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.result-hero__pill {
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.result-hero__pill--plain {
+  background: #F2F5F2 !important;
+  color: #6E7C73 !important;
+  font-weight: 400;
+}
+
+.result-hero__date {
+  font-size: 21rpx;
+  color: #A0ABA4;
+}
+
+.result-hero__desc {
+  margin-top: 26rpx;
+  padding-top: 26rpx;
+  border-top: 1rpx solid #ECF1ED;
+  font-size: 26rpx;
+  color: #4A5A51;
+  line-height: 1.78;
+}
+
+.result-hero__tags {
+  margin-top: 24rpx;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.mini-tag {
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E4EAE5;
+  font-size: 21rpx;
+  color: #77857C;
+}
+
+/* ---------------- 风险提示 ---------------- */
+.risk {
+  margin-top: 28rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 14rpx;
+  padding: 24rpx;
+  border-radius: 22rpx;
+}
+
+.risk--warn {
+  background: #FBF4E6;
+  border: 1rpx solid #F0E2C4;
+}
+
+.risk--danger {
+  background: #FBEDE9;
+  border: 1rpx solid #F0D6CE;
+}
+
+.risk__text {
+  flex: 1;
+  font-size: 23rpx;
+  line-height: 1.72;
+  color: #7E5F22;
+}
+
+.risk--danger .risk__text {
+  color: #A84A36;
+}
+
+/* ---------------- 分布条 ---------------- */
+.bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 18rpx;
+  padding: 14rpx 0;
+}
+
+.bar__name {
+  width: 130rpx;
+  flex: 0 0 auto;
+  font-size: 24rpx;
+  color: #4A5A51;
+}
+
+.bar__track {
+  flex: 1;
+  height: 14rpx;
+  border-radius: 999rpx;
+  background: #F0F3F0;
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  transition: width 0.5s ease;
+}
+
+.bar__val {
+  width: 74rpx;
+  flex: 0 0 auto;
+  text-align: right;
+  font-size: 22rpx;
+  color: #93A099;
+}
+
+.bar-tip {
+  margin-top: 18rpx;
+  font-size: 21rpx;
+  color: #A3AEA7;
+  line-height: 1.6;
+}
+
+/* ---------------- 特征 ---------------- */
+.feat {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 12rpx 0;
+}
+
+.feat__dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  margin-top: 14rpx;
+  flex: 0 0 auto;
+}
+
+.feat__text {
+  flex: 1;
+  font-size: 27rpx;
+  color: #33433A;
+  line-height: 1.68;
+}
+
+.kv {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 20rpx;
+  padding: 14rpx 0;
+}
+
+.kv__k {
+  width: 140rpx;
+  flex: 0 0 auto;
+  font-size: 25rpx;
+  color: #93A099;
+}
+
+.kv__v {
+  flex: 1;
+  font-size: 26rpx;
+  color: #3D4D44;
+  line-height: 1.72;
+}
+
+/* ---------------- 茶方列表 ---------------- */
+.tea-list__item {
+  margin-bottom: 20rpx;
+}
+
+.tea-list__item:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------------- 生活建议 ---------------- */
+.life {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 18rpx;
+  padding: 14rpx 0;
+}
+
+.life__idx {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 12rpx;
+  background: #E8F1EC;
+  color: #2E6B4F;
+  font-size: 22rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-top: 4rpx;
+}
+
+.life__text {
+  flex: 1;
+  font-size: 27rpx;
+  color: #33433A;
+  line-height: 1.68;
+}
+
+/* ---------------- 操作 ---------------- */
+.actions {
+  margin-top: 40rpx;
+  display: flex;
+  flex-direction: row;
+  gap: 20rpx;
+}
+
+.actions--sub {
+  margin-top: 20rpx;
+}
+
+.actions__main {
+  flex: 1;
+  gap: 12rpx;
+}
+
+.actions__half {
+  flex: 1;
+  gap: 10rpx;
+}
+
+/* ---------------- 空状态 ---------------- */
+.empty-sub {
+  margin-top: 10rpx;
+  font-size: 25rpx;
+  color: #A3AEA7;
+}
+
+.empty-btn {
+  margin-top: 40rpx;
+  gap: 12rpx;
+  padding: 0 56rpx;
+}
+
+/* ---------------- 免责 ---------------- */
+.disclaimer {
+  margin-top: 40rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: #F1F4F1;
+}
+
+.disclaimer__text {
+  flex: 1;
+  font-size: 22rpx;
+  color: #8B978F;
+  line-height: 1.7;
+}

@@ -1,0 +1,87 @@
+<view class="page">
+
+  <scroll-view class="tabs" scroll-x enable-flex show-scrollbar="{{false}}">
+    <view class="tabs__inner">
+      <view class="tabs__item {{tab === 'constitution' ? 'is-on' : ''}}" data-tab="constitution" bindtap="switchTab">九种体质</view>
+      <view class="tabs__item {{tab === 'ingredient' ? 'is-on' : ''}}" data-tab="ingredient" bindtap="switchTab">食材科普</view>
+      <view class="tabs__item {{tab === 'faq' ? 'is-on' : ''}}" data-tab="faq" bindtap="switchTab">茶饮常识</view>
+    </view>
+  </scroll-view>
+
+  <view class="container">
+
+    <!-- 体质 -->
+    <block wx:if="{{tab === 'constitution'}}">
+      <view class="lead">九种基本体质是中医养生的重要参考。了解自己的体质倾向，才能选对日常茶饮的方向。</view>
+      <view class="c-list">
+        <view
+          class="c-item"
+          wx:for="{{constitutions}}"
+          wx:key="id"
+          data-id="{{item.id}}"
+          bindtap="openConstitution"
+          hover-class="c-item--hover"
+          hover-stay-time="60"
+        >
+          <view class="c-item__icon" style="background:{{item.soft}}">
+            <icon name="{{item.icon}}" size="{{40}}" color="{{item.color}}" weight="{{1.7}}" />
+          </view>
+          <view class="flex-1">
+            <view class="c-item__top">
+              <text class="c-item__name">{{item.name}}</text>
+              <view wx:if="{{myId === item.id}}" class="c-item__mine">我的体质</view>
+            </view>
+            <view class="c-item__short">{{item.short}} · {{item.teaCount}} 款适配茶方</view>
+            <view class="c-item__brief ellipsis-2">{{item.brief}}</view>
+          </view>
+          <icon name="chevronRight" size="{{28}}" color="#C6CFC9" />
+        </view>
+      </view>
+    </block>
+
+    <!-- 食材 -->
+    <block wx:elif="{{tab === 'ingredient'}}">
+      <view class="lead">以下食材均出自《按照传统既是食品又是中药材的物质目录》，是日常养生茶饮的常用原料。</view>
+      <view class="i-grid">
+        <view
+          class="i-item"
+          wx:for="{{ingredients}}"
+          wx:key="id"
+          data-id="{{item.id}}"
+          bindtap="openIngredient"
+          hover-class="i-item--hover"
+          hover-stay-time="60"
+        >
+          <view class="i-item__name">{{item.name}}</view>
+          <view class="i-item__nature">{{item.nature}}</view>
+          <view class="i-item__effect ellipsis-2">{{item.effect}}</view>
+        </view>
+      </view>
+    </block>
+
+    <!-- 常识 -->
+    <block wx:else>
+      <view class="lead">关于养生茶的常见疑问，这里给出了简明的日常参考。</view>
+      <view class="faq">
+        <view class="faq__item" wx:for="{{faq}}" wx:key="q">
+          <view class="faq__q" data-idx="{{index}}" bindtap="toggleFaq">
+            <text class="faq__q-text">{{item.q}}</text>
+            <view class="faq__arrow {{openFaq === index ? 'is-open' : ''}}">
+              <icon name="chevronDown" size="{{28}}" color="#93A099" weight="{{1.9}}" />
+            </view>
+          </view>
+          <view wx:if="{{openFaq === index}}" class="faq__a">
+            <text>{{item.a}}</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view class="disclaimer">
+      <icon name="info" size="{{28}}" color="#98A69C" weight="{{1.7}}" />
+      <text class="disclaimer__text">以上内容仅作日常养生参考，不替代专业医疗建议。如有明确的身体不适或疾病问题，请及时前往正规医疗机构就诊。</text>
+    </view>
+
+    <view class="page-bottom-gap"></view>
+  </view>
+</view>

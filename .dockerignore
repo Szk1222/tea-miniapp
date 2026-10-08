@@ -1,0 +1,9 @@
+node_modules
+**/node_modules
+server/.cache
+server/.env
+.git
+.workbuddy
+preview
+*.md
+!server/README.md

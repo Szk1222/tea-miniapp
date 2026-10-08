@@ -1,0 +1,297 @@
+/* ---------------- 体质主视觉 ---------------- */
+.khero {
+  position: relative;
+  overflow: hidden;
+  padding: 48rpx 40rpx 56rpx;
+  border-radius: 0 0 40rpx 40rpx;
+}
+
+.khero__shade {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.1) 0%, rgba(0, 0, 0, 0.16) 100%);
+}
+
+.khero__art {
+  position: absolute;
+  right: -40rpx;
+  top: 20rpx;
+  opacity: 0.2;
+}
+
+.khero__content {
+  position: relative;
+}
+
+.khero__badge {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1rpx solid rgba(255, 255, 255, 0.34);
+  color: #FFFFFF;
+  font-size: 21rpx;
+}
+
+.khero__name {
+  margin-top: 22rpx;
+  font-size: 60rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  letter-spacing: 5rpx;
+  line-height: 1.2;
+}
+
+.khero__short {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.86);
+  letter-spacing: 2rpx;
+}
+
+.khero__desc {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.22);
+  font-size: 25rpx;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.78;
+}
+
+/* ---------------- 食材主视觉 ---------------- */
+.ihero {
+  padding: 48rpx 40rpx 44rpx;
+  background: linear-gradient(160deg, #EDF5F0 0%, #F5F7F4 100%);
+  border-radius: 0 0 40rpx 40rpx;
+}
+
+.ihero__icon {
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 32rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #DCEAE1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6rpx 20rpx rgba(46, 107, 79, 0.08);
+}
+
+.ihero__name {
+  margin-top: 26rpx;
+  font-size: 52rpx;
+  font-weight: 600;
+  color: #17251D;
+  letter-spacing: 4rpx;
+}
+
+.ihero__row {
+  margin-top: 20rpx;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.ihero__pill {
+  padding: 8rpx 22rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #DCEAE1;
+  color: #2E6B4F;
+  font-size: 22rpx;
+}
+
+/* ---------------- 通用块 ---------------- */
+.feat {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 12rpx 0;
+}
+
+.feat__dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  margin-top: 14rpx;
+  flex: 0 0 auto;
+}
+
+.feat__check {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #4E9A72;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-top: 6rpx;
+}
+
+.feat__text {
+  flex: 1;
+  font-size: 27rpx;
+  color: #33433A;
+  line-height: 1.7;
+}
+
+.kv {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 20rpx;
+  padding: 14rpx 0;
+}
+
+.kv__k {
+  width: 140rpx;
+  flex: 0 0 auto;
+  font-size: 25rpx;
+  color: #93A099;
+}
+
+.kv__v {
+  flex: 1;
+  font-size: 26rpx;
+  color: #3D4D44;
+  line-height: 1.72;
+}
+
+.life {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 18rpx;
+  padding: 14rpx 0;
+}
+
+.life__idx {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 12rpx;
+  background: #E8F1EC;
+  color: #2E6B4F;
+  font-size: 22rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-top: 4rpx;
+}
+
+.life__text {
+  flex: 1;
+  font-size: 27rpx;
+  color: #33433A;
+  line-height: 1.68;
+}
+
+.tea-list__item {
+  margin-bottom: 20rpx;
+}
+
+.caution {
+  padding: 8rpx 26rpx;
+  border-radius: 24rpx;
+  background: #FBF5E8;
+  border: 1rpx solid #F0E2C4;
+}
+
+.caution__item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 14rpx;
+  padding: 18rpx 0;
+}
+
+.caution__text {
+  flex: 1;
+  font-size: 25rpx;
+  color: #83631F;
+  line-height: 1.68;
+}
+
+.disclaimer {
+  margin-top: 36rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: #F1F4F1;
+}
+
+.disclaimer__text {
+  flex: 1;
+  font-size: 22rpx;
+  color: #8B978F;
+  line-height: 1.72;
+}
+
+/* ---------------- 底部操作 ---------------- */
+.bottom-bar-gap {
+  height: 164rpx;
+}
+
+.bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 900;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(18rpx);
+  border-top: 1rpx solid #EDF0EC;
+  box-shadow: 0 -4rpx 24rpx rgba(28, 56, 41, 0.05);
+}
+
+.bottom-bar__inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 16rpx 28rpx;
+}
+
+/* 主按钮：图标与文字间距用 margin（不依赖 flex gap），并兜住溢出 */
+.bottom-bar__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 88rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  background: #2E6B4F;
+  color: #FFFFFF;
+  font-size: 28rpx;
+  font-weight: 600;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 6rpx 16rpx rgba(46, 107, 79, 0.2);
+}
+
+.bottom-bar__main:active {
+  background: #21503A;
+}
+
+.bottom-bar__main-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 12rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

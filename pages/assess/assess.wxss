@@ -1,0 +1,249 @@
+.assess {
+  padding-bottom: 40rpx;
+}
+
+/* ---------------- 进度 ---------------- */
+.progress {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 24rpx 32rpx 20rpx;
+  background: rgba(245, 247, 244, 0.97);
+  backdrop-filter: blur(12rpx);
+}
+
+.progress__track {
+  height: 8rpx;
+  border-radius: 999rpx;
+  background: #E4EAE5;
+  overflow: hidden;
+}
+
+.progress__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, #4E9A72 0%, #2E6B4F 100%);
+  transition: width 0.3s ease;
+}
+
+.progress__meta {
+  margin-top: 14rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.progress__step {
+  font-size: 23rpx;
+  color: #6E7C73;
+  font-weight: 600;
+}
+
+.progress__hint {
+  font-size: 22rpx;
+  color: #A0ABA4;
+}
+
+/* ---------------- 标题 ---------------- */
+.head {
+  margin: 30rpx 0 34rpx;
+}
+
+.head__title {
+  font-size: 42rpx;
+  font-weight: 600;
+  color: #17251D;
+  line-height: 1.42;
+  letter-spacing: 0.4rpx;
+}
+
+.head__desc {
+  margin-top: 14rpx;
+  font-size: 25rpx;
+  color: #84928A;
+  line-height: 1.65;
+}
+
+/* ---------------- 字段 ---------------- */
+.field {
+  margin-bottom: 40rpx;
+}
+
+.field__label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #3D4D44;
+  margin-bottom: 18rpx;
+}
+
+.field__sub {
+  margin-left: 12rpx;
+  font-size: 21rpx;
+  font-weight: 400;
+  color: #A3AEA7;
+}
+
+.field__input {
+  height: 92rpx;
+  padding: 0 28rpx;
+  border-radius: 20rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E6EBE6;
+  font-size: 27rpx;
+  color: #17251D;
+}
+
+.field__ph {
+  color: #ADB7B0;
+  font-size: 26rpx;
+}
+
+/* ---------------- 选项 ---------------- */
+.opt-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.opt-line {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 30rpx 28rpx;
+  border-radius: 22rpx;
+  background: #FFFFFF;
+  border: 1.5rpx solid #E9EDE8;
+  box-shadow: 0 2rpx 8rpx rgba(28, 56, 41, 0.035);
+  transition: all 0.18s ease;
+}
+
+.opt-line:active {
+  background: #FAFBF9;
+}
+
+.opt-line.is-on {
+  border-color: #2E6B4F;
+  background: #F2F8F4;
+  box-shadow: 0 6rpx 20rpx rgba(46, 107, 79, 0.12);
+}
+
+.opt-line__text {
+  flex: 1;
+  font-size: 28rpx;
+  color: #2A3A31;
+  line-height: 1.6;
+}
+
+.opt-line.is-on .opt-line__text {
+  color: #1F4A36;
+  font-weight: 600;
+}
+
+.radio {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  border: 2rpx solid #D5DED8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  transition: all 0.18s ease;
+}
+
+.radio--on {
+  background: #2E6B4F;
+  border-color: #2E6B4F;
+}
+
+.opt-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 18rpx;
+}
+
+.opt-chip {
+  padding: 20rpx 34rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+  border: 1.5rpx solid #E9EDE8;
+  font-size: 27rpx;
+  color: #3D4D44;
+  line-height: 1.3;
+}
+
+.opt-chip:active {
+  background: #FAFBF9;
+}
+
+.opt-chip.is-on {
+  background: #2E6B4F;
+  border-color: #2E6B4F;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+/* ---------------- 内联提醒 ---------------- */
+.inline-warn {
+  margin-top: 20rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 20rpx 22rpx;
+  border-radius: 18rpx;
+  background: #FBF4E6;
+  font-size: 23rpx;
+  color: #8A6524;
+  line-height: 1.65;
+}
+
+/* ---------------- 底部操作 ---------------- */
+.actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+  margin-top: 48rpx;
+}
+
+.actions__back {
+  flex: 0 0 auto;
+  gap: 10rpx;
+  padding: 0 34rpx;
+}
+
+.actions__next {
+  flex: 1;
+  gap: 10rpx;
+}
+
+.actions__next.is-disabled {
+  opacity: 0.4;
+  box-shadow: none;
+}
+
+.actions__tip {
+  flex: 1;
+  text-align: right;
+  font-size: 22rpx;
+  color: #A3AEA7;
+}
+
+.assess-note {
+  margin-top: 44rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 18rpx;
+  background: #F1F4F1;
+  font-size: 22rpx;
+  color: #8B978F;
+  line-height: 1.7;
+}

@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>茶历方 · 小程序界面预览</title>
+<style>
+  :root{
+    --brand:#2E6B4F; --brand-2:#3E8563; --brand-dark:#21503A; --brand-soft:#E8F1EC; --brand-line:#CFE3D7;
+    --accent:#B9873A; --accent-soft:#FAF2E4;
+    --bg:#F5F7F4; --surface:#fff; --surface-2:#FAFBF9;
+    --text:#17251D; --text-2:#5A6A61; --text-3:#93A099; --line:#E9EDE8; --line-2:#F1F3F0;
+    --danger:#C4553F; --danger-soft:#FBEDE9;
+  }
+  *{box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+  body{
+    margin:0; background:#EDF1EC;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Helvetica,sans-serif;
+    color:var(--text); padding:48px 36px 80px;
+  }
+  .page-head{max-width:1560px;margin:0 auto 40px;}
+  .page-head h1{font-size:30px;margin:0 0 10px;letter-spacing:.5px;}
+  .page-head p{margin:0;color:#6E7C73;font-size:14px;line-height:1.8;}
+  .badges{margin-top:18px;display:flex;flex-wrap:wrap;gap:8px;}
+  .badge{font-size:12px;padding:5px 13px;border-radius:999px;background:#fff;border:1px solid #DCE4DD;color:#4E5F55;}
+  .grid{max-width:1560px;margin:0 auto;display:flex;flex-wrap:wrap;gap:56px 44px;align-items:flex-start;}
+  .item{display:flex;flex-direction:column;align-items:center;gap:16px;}
+  .item .cap{font-size:13px;color:#5A6A61;font-weight:600;letter-spacing:.5px;}
+  .item .cap span{color:#9AA69E;font-weight:400;margin-left:6px;}
+
+  .device{width:396px;height:834px;border-radius:50px;background:#0E1A13;padding:11px;box-shadow:0 26px 60px rgba(14,26,19,.28),0 2px 0 rgba(255,255,255,.06) inset;}
+  .screen{width:100%;height:100%;border-radius:40px;overflow:hidden;background:var(--bg);position:relative;display:flex;flex-direction:column;font-size:14px;}
+
+  /* ---------- 状态栏 / 导航 ---------- */
+  .sbar{height:44px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:13px;font-weight:600;color:#17251D;}
+  .sbar .r{display:flex;align-items:center;gap:5px;}
+  .sig{display:flex;align-items:flex-end;gap:2px;}
+  .sig i{display:block;width:3px;background:#17251D;border-radius:1px;}
+  .sig i:nth-child(1){height:4px}.sig i:nth-child(2){height:6px}.sig i:nth-child(3){height:8px}.sig i:nth-child(4){height:10px}
+  .bat{width:22px;height:11px;border:1.5px solid #17251D;border-radius:3px;position:relative;}
+  .bat::after{content:"";position:absolute;right:-3px;top:3px;width:2px;height:5px;background:#17251D;border-radius:0 1px 1px 0;}
+  .bat i{position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:12px;background:#17251D;border-radius:1px;}
+
+  .navbar{height:44px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#17251D;position:relative;}
+  .navbar .back{position:absolute;left:20px;display:flex;align-items:center;}
+
+  .body{flex:1;min-height:0;overflow:hidden;position:relative;}
+  .pad{padding:0 16px;}
+
+  .ic{width:20px;height:20px;display:block;flex:0 0 auto;}
+  .ic.sm{width:15px;height:15px}.ic.xs{width:13px;height:13px}.ic.lg{width:26px;height:26px}.ic.xl{width:34px;height:34px}
+
+  /* ---------- 通用 ---------- */
+  .row{display:flex;align-items:center}
+  .between{display:flex;align-items:center;justify-content:space-between}
+  .col{display:flex;flex-direction:column}
+  .g6{gap:6px}.g10{gap:10px}.g12{gap:12px}.g16{gap:16px}.g20{gap:20px}
+  .f1{flex:1;min-width:0}
+  .mut{color:var(--text-3)}
+  .t2{color:var(--text-2)}
+  .b{font-weight:600}
+  .ell{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .clamp2{overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+
+  .sec{display:flex;align-items:center;justify-content:space-between;margin:22px 2px 11px;}
+  .sec .t{display:flex;align-items:center;font-size:16px;font-weight:600;letter-spacing:.3px;}
+  .sec .t::before{content:"";width:3px;height:15px;border-radius:2px;background:var(--brand);margin-right:8px;}
+  .sec .m{display:flex;align-items:center;font-size:12px;color:var(--text-3);}
+
+  .card{background:#fff;border-radius:14px;border:1px solid var(--line);padding:16px;}
+  .divider{height:1px;background:var(--line);margin:14px 0;}
+
+  /* 茶卡 */
+  .tc{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 1px 4px rgba(28,56,41,.04);}
+  .tc .thumb{position:relative;width:66px;height:66px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:#fff;}
+  .t1{background:linear-gradient(140deg,#CDE5D6,#9DC9B0)}
+  .t2{background:linear-gradient(140deg,#F0E3C7,#D6B983)}
+  .t3{background:linear-gradient(140deg,#DCD9EC,#B4AFD8)}
+  .t4{background:linear-gradient(140deg,#F2DED4,#DCAE99)}
+  .tc .thumb .nt{position:absolute;left:5px;bottom:5px;font-size:9px;background:rgba(255,255,255,.85);color:#33513F;border-radius:999px;padding:1px 6px;}
+  .tc .nm{font-size:15px;font-weight:600;}
+  .tc .sb{font-size:12px;color:#78877D;margin-top:2px;line-height:1.45;}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;}
+  .chip{font-size:10px;padding:2px 8px;border-radius:999px;background:#F4F7F4;color:#6E7C73;line-height:1.7;}
+  .chip.br{background:#E8F1EC;color:#2E6B4F;font-weight:600;}
+
+  /* 体质色 */
+  .cp{color:#4C9A6A}.cq{color:#C2A24A}.cy{color:#CE8552}.cn{color:#B4738F}.ct{color:#6C8BA3}
+  .cs{color:#C06B57}.cx{color:#8B6BA8}.cj{color:#6E7BB5}.cb{color:#5FA79C}
+
+  /* ---------- 首页 ---------- */
+  .hero{margin:0 0 0;padding:18px 16px 22px;background:linear-gradient(158deg,#2F6E52 0%,#255740 58%,#1E4A36 100%);border-radius:0 0 22px 22px;position:relative;overflow:hidden;}
+  .hero::after{content:"";position:absolute;right:-70px;top:-80px;width:230px;height:230px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.18),rgba(255,255,255,0) 68%);}
+  .hero .brand{display:flex;align-items:center;gap:9px;position:relative;}
+  .hero .logo{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;}
+  .hero .bn{font-size:18px;font-weight:600;color:#fff;letter-spacing:1px;line-height:1.1;}
+  .hero .bs{font-size:10px;color:rgba(255,255,255,.62);letter-spacing:1px;margin-top:2px;}
+  .hero .season{padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);color:#EAF3EE;font-size:11px;}
+  .hero .ht{position:relative;margin-top:20px;font-size:23px;font-weight:600;color:#fff;letter-spacing:.5px;line-height:1.3;}
+  .hero .hd{position:relative;margin-top:7px;font-size:12.5px;color:rgba(255,255,255,.7);line-height:1.7;}
+  .hero .acts{position:relative;margin-top:18px;display:flex;gap:10px;}
+  .hero .btn{flex:1;height:46px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:600;}
+  .hero .btn.solid{background:#fff;color:#2E6B4F;box-shadow:0 6px 14px rgba(0,0,0,.16);}
+  .hero .btn.ghost{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.4);color:#fff;}
+
+  .quick{display:flex;justify-content:space-between;padding:15px 6px;background:#fff;border:1px solid var(--line);border-radius:14px;margin-top:16px;}
+  .quick .q{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;}
+  .quick .qi{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;}
+  .quick .qt{font-size:12px;color:#43514A;}
+
+  .constlist{display:flex;flex-wrap:wrap;gap:9px;}
+  .ci{width:calc(50% - 4.5px);display:flex;align-items:center;gap:9px;padding:12px 11px;background:#fff;border:1px solid var(--line);border-radius:12px;}
+  .ci .ic2{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .ci .nm{font-size:14px;font-weight:600;line-height:1.25;}
+  .ci .sh{font-size:10.5px;color:#93A099;margin-top:2px;}
+
+  /* ---------- 对话 ---------- */
+  .chat{padding:4px 14px 0;display:flex;flex-direction:column;gap:14px;}
+  .msg{display:flex;align-items:flex-start;gap:9px;}
+  .msg.me{flex-direction:row-reverse;}
+  .av{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .av.bot{background:#E8F1EC}.av.me{background:#2E6B4F}
+  .bub{max-width:75%;padding:11px 13px;border-radius:12px;font-size:13.5px;line-height:1.7;}
+  .bub.bot{background:#fff;border:1px solid var(--line);border-top-left-radius:4px;box-shadow:0 1px 5px rgba(28,56,41,.04);}
+  .bub.me{background:#2E6B4F;color:#fff;border-top-right-radius:4px;box-shadow:0 4px 10px rgba(46,107,79,.18);}
+  .bub.small{font-size:11.5px;color:#8B978F;background:#F3F5F3;border-color:#EDF0EC;}
+  .notebox{flex:1;display:flex;gap:6px;padding:11px 12px;border-radius:10px;background:#FBF4E6;border:1px solid #F0E2C4;font-size:11.5px;line-height:1.65;color:#7E5F22;}
+  .notebox.dg{background:#FBEDE9;border-color:#F0D6CE;color:#A84A36;}
+  .quickchips{display:flex;flex-wrap:wrap;gap:8px;padding-left:41px;}
+  .qc{padding:7px 13px;border-radius:999px;background:#fff;border:1px solid #D9E6DE;color:#2E6B4F;font-size:12.5px;}
+  .ctacard{flex:1;padding:14px;border-radius:12px;background:linear-gradient(140deg,#F2F8F4,#fff);border:1px solid #D8E9DF;}
+  .ctacard .row{gap:9px;align-items:flex-start;}
+  .ctacard .ico{width:34px;height:34px;border-radius:10px;background:#2E6B4F;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .ctacard .tt{font-size:14px;font-weight:600;}
+  .ctacard .dd{font-size:11px;color:#7C8A80;margin-top:3px;line-height:1.5;}
+  .ctacard .btn{margin-top:12px;height:39px;border-radius:999px;background:#2E6B4F;color:#fff;font-size:13.5px;font-weight:600;display:flex;align-items:center;justify-content:center;}
+  .composer{margin-top:auto;border-top:1px solid #E6EBE6;background:rgba(245,247,244,.97);padding:9px 14px;display:flex;gap:8px;align-items:center;}
+  .composer .inp{flex:1;height:40px;border-radius:999px;background:#fff;border:1px solid #E4E9E4;display:flex;align-items:center;padding:0 15px;font-size:13px;color:#A9B4AC;}
+  .composer .sd{width:40px;height:40px;border-radius:50%;background:#2E6B4F;display:flex;align-items:center;justify-content:center;}
+
+  /* ---------- 测评 ---------- */
+  .prog{padding:12px 16px 10px;}
+  .prog .tr{height:4px;border-radius:999px;background:#E4EAE5;overflow:hidden;}
+  .prog .fl{height:100%;border-radius:999px;background:linear-gradient(90deg,#4E9A72,#2E6B4F);}
+  .prog .mt{display:flex;justify-content:space-between;margin-top:7px;font-size:11.5px;color:#6E7C73;font-weight:600;}
+  .prog .mt .h{color:#A0ABA4;font-weight:400;}
+  .qhead{padding:6px 16px 14px;}
+  .qhead .t{font-size:21px;font-weight:600;line-height:1.42;}
+  .qhead .d{margin-top:7px;font-size:12.5px;color:#84928A;line-height:1.6;}
+  .opts{padding:0 16px;display:flex;flex-direction:column;gap:10px;}
+  .opt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 14px;border-radius:11px;background:#fff;border:1.5px solid var(--line);font-size:13.5px;line-height:1.55;}
+  .opt.on{border-color:#2E6B4F;background:#F2F8F4;font-weight:600;color:#1F4A36;box-shadow:0 3px 10px rgba(46,107,79,.12);}
+  .radio{width:22px;height:22px;border-radius:50%;border:2px solid #D5DED8;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .radio.on{background:#2E6B4F;border-color:#2E6B4F;}
+  .pillrow{display:flex;flex-wrap:wrap;gap:9px;padding:0 16px;}
+  .pill{padding:10px 17px;border-radius:999px;background:#fff;border:1.5px solid var(--line);font-size:13.5px;color:#3D4D44;}
+  .pill.on{background:#2E6B4F;border-color:#2E6B4F;color:#fff;font-weight:600;}
+
+  /* ---------- 结果 ---------- */
+  .rhero{margin:12px 16px 0;padding:20px 18px;border-radius:18px;border:1px solid #E6EDE8;background:linear-gradient(150deg,#EAF0F4 0%,#fff 72%);box-shadow:0 6px 18px rgba(28,56,41,.07);}
+  .rhero .bdg{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;}
+  .rhero .lb{font-size:11.5px;color:#7A887F;letter-spacing:1px;}
+  .rhero .nm{margin-top:13px;font-size:30px;font-weight:600;letter-spacing:2px;}
+  .rhero .sh{margin-top:4px;font-size:13px;color:#6E7C73;letter-spacing:.5px;}
+  .rhero .mt{margin-top:12px;display:flex;flex-wrap:wrap;gap:7px;align-items:center;}
+  .rhero .pl{padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;}
+  .rhero .ds{margin-top:13px;padding-top:13px;border-top:1px solid #ECF1ED;font-size:13px;color:#4A5A51;line-height:1.75;}
+  .bar{display:flex;align-items:center;gap:9px;padding:7px 0;}
+  .bar .n{width:65px;font-size:12px;color:#4A5A51;flex:0 0 auto;}
+  .bar .tr{flex:1;height:7px;border-radius:999px;background:#F0F3F0;overflow:hidden;}
+  .bar .fl{height:100%;border-radius:999px;}
+  .bar .v{width:37px;text-align:right;font-size:11px;color:#93A099;flex:0 0 auto;}
+
+  /* ---------- 茶方详情 ---------- */
+  .dhero{height:200px;display:flex;flex-direction:column;justify-content:flex-end;position:relative;overflow:hidden;border-radius:0 0 20px 20px;background:linear-gradient(150deg,#4C9B76,#2E6B4F);}
+  .dhero .art{position:absolute;right:-14px;top:6px;opacity:.22;}
+  .dhero .ct{position:relative;padding:0 20px 22px;}
+  .dhero .bdgs{display:flex;gap:6px;margin-bottom:11px;}
+  .dhero .bd{display:flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:10.5px;}
+  .dhero .nm{font-size:28px;font-weight:600;color:#fff;letter-spacing:2px;}
+  .dhero .sb{margin-top:7px;font-size:12.5px;color:rgba(255,255,255,.78);}
+  .facts{margin:-22px 16px 0;position:relative;display:flex;align-items:center;background:#fff;border-radius:14px;border:1px solid var(--line);box-shadow:0 5px 15px rgba(28,56,41,.08);padding:14px 0;}
+  .facts .f{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .facts .l{font-size:10.5px;color:#A0ABA4;}
+  .facts .v{font-size:13px;font-weight:600;color:#24352C;}
+  .facts .vl{width:1px;height:24px;background:#EDF1EE;}
+  .ing{display:flex;align-items:center;gap:8px;padding:11px 0;}
+  .ing+.ing{border-top:1px solid var(--line-2);}
+  .ing .ii{width:26px;height:26px;border-radius:8px;background:#EEF6F1;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .ing .in2{font-size:14px;font-weight:600;width:74px;flex:0 0 auto;}
+  .ing .ir{flex:1;font-size:11.5px;color:#87958B;}
+  .ing .ia{font-size:13.5px;font-weight:600;color:#2E6B4F;}
+
+  /* ---------- 我的 ---------- */
+  .pcard{margin:14px 16px 0;padding:17px 16px 0;border-radius:16px;background:linear-gradient(150deg,#fff,#F1F7F3);border:1px solid #E1EDE6;box-shadow:0 5px 15px rgba(46,107,79,.07);}
+  .pcard .av2{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .pcard .nm{font-size:18px;font-weight:600;}
+  .pcard .mt{font-size:11.5px;color:#7C8A80;margin-top:4px;}
+  .pcard .btn{padding:6px 10px;border-radius:999px;background:#E8F1EC;color:#2E6B4F;font-size:11.5px;display:flex;align-items:center;gap:2px;}
+  .pcard .stats{margin-top:16px;display:flex;align-items:center;border-top:1px solid #E5EFE9;padding:13px 0 14px;}
+  .pcard .st{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .pcard .num{font-size:18px;font-weight:600;color:#1F4A36;}
+  .pcard .lb{font-size:10.5px;color:#8B9A90;}
+  .pcard .vline{width:1px;height:23px;background:#E5EFE9;}
+
+  .cell{display:flex;align-items:center;gap:9px;padding:12px 0;}
+  .cell+.cell{border-top:1px solid var(--line-2);}
+  .cell .ico{width:33px;height:33px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .cell .tt{font-size:14px;flex:1;}
+  .cell .vv{font-size:12.5px;color:#93A099;}
+
+  /* ---------- 知识库 ---------- */
+  .kitem{display:flex;align-items:center;gap:11px;padding:14px 13px;background:#fff;border:1px solid var(--line);border-radius:13px;}
+  .kitem .ic3{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .kitem .nm{font-size:15.5px;font-weight:600;}
+  .kitem .sh{font-size:11px;color:#93A099;margin-top:3px;}
+  .kitem .br{font-size:12px;color:#6E7C73;margin-top:5px;line-height:1.55;}
+
+  /* ---------- 底部 tabbar ---------- */
+  .tabbar{flex:0 0 auto;display:flex;align-items:center;height:54px;background:rgba(255,255,255,.97);border-top:1px solid #EDF0EC;}
+  .tabbar .tb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .tabbar .tb .iw{width:31px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+  .tabbar .tb.on .iw{background:#E8F1EC;}
+  .tabbar .tb .lb{font-size:10px;color:#93A099;letter-spacing:.3px;}
+  .tabbar .tb.on .lb{color:#2E6B4F;font-weight:600;}
+
+  /* ---------- 通用提示条 ---------- */
+  .notice{display:flex;gap:7px;padding:11px 12px;border-radius:10px;background:#FBF4E6;border:1px solid #F0E2C4;font-size:11.5px;line-height:1.65;color:#7E5F24;}
+  .disc{display:flex;gap:6px;padding:12px;border-radius:10px;background:#F1F4F1;font-size:11px;color:#8B978F;line-height:1.7;}
+
+  .btnline{height:46px;border-radius:999px;background:#2E6B4F;color:#fff;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .btnline.lt{background:#E8F1EC;color:#2E6B4F;}
+  .btnline.gh{background:transparent;border:1.5px solid #CFE3D7;color:#2E6B4F;}
+</style>
+</head>
+<body>
+
+<!-- 图标精灵 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="p-home"><path d="M3 9.3 12 2.4l9 6.9V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9.3 21v-6.4h5.4V21"/></g>
+    <g id="p-tea"><path d="M4.2 8.4h12.6v7.2a4.9 4.9 0 0 1-4.9 4.9H9.1a4.9 4.9 0 0 1-4.9-4.9z"/><path d="M16.8 9.8h1.7a3 3 0 0 1 0 6h-1.7"/><path d="M8.4 2.6v3.2M12.6 2.6v3.2"/></g>
+    <g id="p-user"><path d="M20 20.4v-1.8a4.4 4.4 0 0 0-4.4-4.4H8.4A4.4 4.4 0 0 0 4 18.6v1.8"/><circle cx="12" cy="7.6" r="4"/></g>
+    <g id="p-chat"><path d="M21 11.6a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.7-.9L3 20.6l1.5-5.3A8.4 8.4 0 0 1 12.4 3 8.4 8.4 0 0 1 21 11.6z"/><path d="M8.8 11.6h6.4M9.6 14.8h4.8"/></g>
+    <g id="p-clip"><path d="M15.6 4H18a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2.4"/><rect x="8.4" y="2.2" width="7.2" height="3.8" rx="1.2"/><path d="M9 12.4h6M9 16.4h4"/></g>
+    <g id="p-leaf"><path d="M11 20.4A7.4 7.4 0 0 1 9.7 6.1C15.6 5 17.2 4.4 19.2 2c1 2 2 4.2 2 8 0 5.6-4.8 10.4-10.2 10.4z"/><path d="M2.4 21.4c0-3.1 1.9-5.6 5.2-6.2 2.5-.5 5-2 6-3.5"/></g>
+    <g id="p-bookmark"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></g>
+    <g id="p-chev"><path d="M9 18l6-6-6-6"/></g>
+    <g id="p-arrowr"><path d="M4.6 12h14.8M13 5.6l6.4 6.4-6.4 6.4"/></g>
+    <g id="p-arrowl"><path d="M19.4 12H4.6M11 18.4L4.6 12 11 5.6"/></g>
+    <g id="p-search"><circle cx="11" cy="11" r="7.6"/><path d="M21 21l-4.4-4.4"/></g>
+    <g id="p-send"><path d="M21.4 2.6L10.6 13.4"/><path d="M21.4 2.6l-6.8 19-4-9.2-9.2-4 19-5.8z"/></g>
+    <g id="p-check"><path d="M20 6.5L9.2 17.3l-5.2-5.2"/></g>
+    <g id="p-alert"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h16.9a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9.4v4.2M12 17.2h.01"/></g>
+    <g id="p-info"><circle cx="12" cy="12" r="9.4"/><path d="M12 16.4v-4.8M12 8.2h.01"/></g>
+    <g id="p-sparkle"><path d="M11.4 2.6l1.7 4.9 4.9 1.7-4.9 1.7-1.7 4.9-1.7-4.9L4.8 9.2l4.9-1.7z"/><path d="M18.4 15.4l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></g>
+    <g id="p-clock"><circle cx="12" cy="12" r="9.4"/><path d="M12 6.6V12l3.8 2.2"/></g>
+    <g id="p-drop"><path d="M12 2.7l5.7 5.7a8 8 0 1 1-11.4 0z"/></g>
+    <g id="p-cup"><path d="M5 6h11v9.2a4.6 4.6 0 0 1-4.6 4.6H9.6A4.6 4.6 0 0 1 5 15.2z"/><path d="M16 8.6h1.6a2.9 2.9 0 0 1 0 5.8H16"/><path d="M8.6 2.6a2.4 2.4 0 0 0 0 3.4M12.4 2.6a2.4 2.4 0 0 0 0 3.4"/></g>
+    <g id="p-sun"><circle cx="12" cy="12" r="4.4"/><path d="M12 2.2v2.2M12 19.6v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.2 12h2.2M19.6 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></g>
+    <g id="p-moon"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></g>
+    <g id="p-cloud"><path d="M17.6 10.2h-1.3A6.9 6.9 0 1 0 6.8 18.2h10.8a4 4 0 0 0 0-8z"/></g>
+    <g id="p-flame"><path d="M12 22c4.4 0 7-2.9 7-6.6 0-2.3-1.2-4.2-2.6-5.7-1-1-2-2.2-2.4-3.7-.2-.8-.3-1.6-.3-2.5-2.2 1-3.9 2.6-4.8 4.4-.5-1-.6-2.1-.5-3.2C6 6.3 5 8.9 5 11.6 5 18 7.6 22 12 22z"/></g>
+    <g id="p-act"><path d="M21.6 12h-4.2l-3.1 8.2L9.7 3.8 6.6 12H2.4"/></g>
+    <g id="p-compass"><circle cx="12" cy="12" r="9.4"/><path d="M15.8 8.2l-2 5.6-5.6 2 2-5.6z"/></g>
+    <g id="p-shield"><path d="M12 22s8-3.9 8-10V5.2L12 2.2 4 5.2V12c0 6.1 8 10 8 10z"/><path d="M9 12l2.2 2.2L15.4 10"/></g>
+    <g id="p-wind"><path d="M9.6 4.6A2 2 0 1 1 11 8H2M12.6 19.4A2 2 0 1 0 14 16H2M17.7 7.7A2.5 2.5 0 1 1 19.5 12H2"/></g>
+    <g id="p-scale"><path d="M12 3.4v17.2M6.4 20.6h11.2"/><path d="M5 7l-3.4 6.6h6.8zM19 7l-3.4 6.6h6.8z"/><path d="M5 7l7-2 7 2"/></g>
+    <g id="p-refresh"><path d="M22.4 4.4v5.6h-5.6"/><path d="M1.6 19.6V14h5.6"/><path d="M3.9 9.2a9 9 0 0 1 14.8-3.4l3.7 3.8M1.6 14l3.7 3.8A9 9 0 0 0 20.1 14.8"/></g>
+    <g id="p-history"><path d="M1.6 4.4v5.6H7.2"/><path d="M3.9 14.6a9 9 0 1 0 2.1-9.3L1.6 10"/></g>
+    <g id="p-lock"><rect x="3.4" y="10.6" width="17.2" height="10.6" rx="2.4"/><path d="M7.4 10.6V7a4.6 4.6 0 0 1 9.2 0v3.6"/></g>
+    <g id="p-trash"><path d="M3 6h18M8 6V4.4A1.4 1.4 0 0 1 9.4 3h5.2A1.4 1.4 0 0 1 16 4.4V6M18.6 6l-1 13.6a2 2 0 0 1-2 1.9H8.4a2 2 0 0 1-2-1.9L5.4 6"/></g>
+    <g id="p-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></g>
+    <g id="p-help"><circle cx="12" cy="12" r="9.4"/><path d="M9.3 9.3a2.8 2.8 0 0 1 5.4.9c0 1.9-2.7 2.6-2.7 4"/><path d="M12 17.4h.01"/></g>
+    <g id="p-target"><circle cx="12" cy="12" r="9.4"/><circle cx="12" cy="12" r="5.4"/><circle cx="12" cy="12" r="1.6"/></g>
+    <g id="p-lock2"><rect x="3.4" y="10.6" width="17.2" height="10.6" rx="2.4"/><path d="M7.4 10.6V7a4.6 4.6 0 0 1 9.2 0v3.6"/></g>
+    <g id="p-close"><path d="M18 6L6 18M6 6l12 12"/></g>
+    <g id="p-edit"><path d="M11 4H4.4A2.4 2.4 0 0 0 2 6.4v13.2A2.4 2.4 0 0 0 4.4 22h13.2a2.4 2.4 0 0 0 2.4-2.4V13"/><path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></g>
+    <g id="p-share"><circle cx="18" cy="5" r="2.8"/><circle cx="6" cy="12" r="2.8"/><circle cx="18" cy="19" r="2.8"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></g>
+  </defs>
+</svg>
+
+<div class="page-head">
+  <h1>茶历方 · 中医体质养生茶推荐小程序</h1>
+  <p>视觉预览 · 简洁移动端设计，信息层级清晰、布局紧凑，统一线性图标体系（无 Emoji）。<br />
+  真实交付物为微信小程序工程源码（WXML / WXSS / JS / JSON），本页为静态界面预览，便于快速确认设计方向。</p>
+  <div class="badges">
+    <span class="badge">9 种中医体质</span>
+    <span class="badge">18 款药食同源茶方</span>
+    <span class="badge">10 题简化测评</span>
+    <span class="badge">对话式顾问（流式输出）</span>
+    <span class="badge">医疗合规风控层</span>
+    <span class="badge">顶部深绿主色 #2E6B4F</span>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- ============ 1. 首页 ============ -->
+  <div class="item">
+    <div class="device"><div class="screen">
+      <div class="sbar"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="bat"><i></i></span></span></div>
+      <div class="body">
+        <div class="hero">
+          <div class="between">
+            <div class="brand">
+              <div class="logo"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><use href="#p-leaf"/></svg></div>
+              <div><div class="bn">茶历方</div><div class="bs">辨证施茶 · 一人一方</div></div>
+            </div>
+            <div class="season">秋季</div>
+          </div>
+          <div class="ht">下午好，今天想喝点什么？</div>
+          <div class="hd">依据九种中医体质，从药食同源食材中为你匹配当季适合的日常茶饮。</div>
+          <div class="acts">
+            <div class="btn solid"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#p-clip"/></svg>开始体质测评</div>
+            <div class="btn ghost"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chat"/></svg>问茶顾问</div>
+          </div>
+        </div>
+
+        <div class="pad">
+          <div class="pcard" style="margin:16px 0 0;padding:16px;display:flex;align-items:center;gap:11px;background:linear-gradient(135deg,#fff,#F3F8F4);">
+            <div class="f1">
+              <div style="font-size:11px;color:#8B9A90;letter-spacing:.5px;">我的体质档案</div>
+              <div style="margin-top:5px;display:flex;align-items:baseline;gap:7px;"><span style="font-size:20px;font-weight:600;color:#1F3B2C;">痰湿质</span><span style="font-size:12px;color:#5A6A61;">形体困重</span></div>
+              <div style="margin-top:4px;font-size:11px;color:#93A099;">有一定倾向 · 10 月 8 日 更新</div>
+            </div>
+            <div class="col" style="align-items:flex-end;gap:6px;">
+              <svg class="xl" viewBox="0 0 24 24" fill="none" stroke="#6C8BA3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#p-cloud"/></svg>
+              <div class="row g6" style="font-size:11px;color:#93A099;">查看档案<svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+            </div>
+          </div>
+
+          <div class="quick">
+            <div class="q"><div class="qi" style="background:#E8F1EC"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-clip"/></svg></div><div class="qt">体质测评</div></div>
+            <div class="q"><div class="qi" style="background:#FAF2E4"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#B9873A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chat"/></svg></div><div class="qt">问茶顾问</div></div>
+            <div class="q"><div class="qi" style="background:#EAF0F6"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#4E7EA8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg></div><div class="qt">茶方库</div></div>
+            <div class="q"><div class="qi" style="background:#F7EBF0"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#B4738F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-bookmark"/></svg></div><div class="qt">我的收藏</div></div>
+          </div>
+
+          <div class="sec"><div class="t">秋季推荐</div><div class="m">全部茶方<svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7"><use href="#p-chev"/></svg></div></div>
+          <div class="notice"><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#8A6524" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px"><use href="#p-wind"/></svg><span>秋季燥气当令，重在滋阴润燥，宜甘润类茶饮。</span></div>
+          <div style="display:flex;gap:11px;margin-top:11px;">
+            <div class="tc" style="width:222px;flex-direction:column;align-items:stretch;padding:0 0 12px;overflow:hidden;">
+              <div class="thumb t3" style="width:100%;height:96px;border-radius:0;display:flex;align-items:center;justify-content:center;"><svg class="lg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg><span class="nt">性微寒</span></div>
+              <div style="padding:11px 13px 0;"><div class="nm">百合桑椹茶</div><div class="sb clamp2">养阴润肺 · 干燥季节的清甜滋养</div>
+              <div class="chips"><span class="chip">润燥</span><span class="chip">秋季</span></div></div>
+            </div>
+            <div class="tc" style="width:222px;flex-direction:column;align-items:stretch;padding:0 0 12px;overflow:hidden;">
+              <div class="thumb t2" style="width:100%;height:96px;border-radius:0;display:flex;align-items:center;justify-content:center;"><svg class="lg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg><span class="nt">性温</span></div>
+              <div style="padding:11px 13px 0;"><div class="nm">姜枣暖阳茶</div><div class="sb clamp2">温中散寒 · 缓解手脚发凉</div>
+              <div class="chips"><span class="chip">暖身</span><span class="chip">秋冬</span></div></div>
+            </div>
+          </div>
+
+          <div class="sec"><div class="t">九种体质</div><div class="m">体质科普<svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7"><use href="#p-chev"/></svg></div></div>
+          <div class="constlist">
+            <div class="ci"><div class="ic2" style="background:#E7F3EC"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#4C9A6A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-scale"/></svg></div><div><div class="nm">平和质</div><div class="sh">阴阳调和</div></div></div>
+            <div class="ci"><div class="ic2" style="background:#F7F1DE"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#C2A24A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-wind"/></svg></div><div><div class="nm">气虚质</div><div class="sh">气短乏力</div></div></div>
+            <div class="ci"><div class="ic2" style="background:#FAEFE5"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#CE8552" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-sun"/></svg></div><div><div class="nm">阳虚质</div><div class="sh">畏寒肢冷</div></div></div>
+            <div class="ci"><div class="ic2" style="background:#F7EBF0"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#B4738F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-moon"/></svg></div><div><div class="nm">阴虚质</div><div class="sh">口燥咽干</div></div></div>
+            <div class="ci"><div class="ic2" style="background:#EAF0F4"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#6C8BA3" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-cloud"/></svg></div><div><div class="nm">痰湿质</div><div class="sh">形体困重</div></div></div>
+            <div class="ci"><div class="ic2" style="background:#FAEDE9"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#C06B57" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-flame"/></svg></div><div><div class="nm">湿热质</div><div class="sh">面垢油光</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tb on"><div class="iw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><use href="#p-home"/></svg></div><div class="lb">首页</div></div>
+        <div class="tb"><div class="iw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chat"/></svg></div><div class="lb">问茶</div></div>
+        <div class="tb"><div class="iw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg></div><div class="lb">茶方</div></div>
+        <div class="tb"><div class="iw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-user"/></svg></div><div class="lb">我的</div></div>
+      </div>
+    </div></div>
+    <div class="cap">首页 <span>品牌主视觉 + 双入口 + 当季推荐</span></div>
+  </div>
+
+  <!-- ============ 2. 问茶顾问 ============ -->
+  <div class="item">
+    <div class="device"><div class="screen">
+      <div class="sbar"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="bat"><i></i></span></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#17251D" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><use href="#p-arrowl"/></svg></span>问茶顾问</div>
+      <div class="body" style="display:flex;flex-direction:column;">
+        <div class="between" style="padding:9px 16px 8px;">
+          <div class="row g6"><span style="width:7px;height:7px;border-radius:50%;background:#46A16B;box-shadow:0 0 0 3px rgba(70,161,107,.14);display:block"></span><span style="font-size:13px;font-weight:600;color:#35473C;">智能养生顾问</span><span style="font-size:10px;background:#E8F1EC;color:#2E6B4F;border-radius:999px;padding:2px 7px;">痰湿质</span><span style="font-size:10px;background:#FBF3E4;color:#B9873A;border:1px solid #F0E1C6;border-radius:999px;padding:2px 7px;">AI 增强</span></div>
+          <div class="row g6" style="font-size:11.5px;color:#93A099;"><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-refresh"/></svg>清空</div>
+        </div>
+
+        <div class="chat" style="flex:1;">
+          <div class="msg"><div class="av bot"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-leaf"/></svg></div>
+            <div class="bub bot">结合你的「痰湿质」体质，脾胃运化偏弱、水湿容易停聚，方向是健脾祛湿、理气化痰。今天已入秋，我挑了当季更合适的两款。</div></div>
+
+          <div class="msg"><div class="av bot"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-leaf"/></svg></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:9px;">
+              <div class="tc"><div class="thumb t1"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg><span class="nt">性平</span></div>
+                <div class="f1"><div class="nm">陈皮荷叶茶</div><div class="sb clamp2">理气化痰 · 餐后解腻的清香之选</div><div class="chips"><span class="chip">解腻</span><span class="chip">化痰</span></div></div>
+                <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+              <div class="tc"><div class="thumb t2"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg><span class="nt">性平</span></div>
+                <div class="f1"><div class="nm">红豆薏米茶</div><div class="sb clamp2">健脾祛湿 · 缓解身体沉重与浮肿</div><div class="chips"><span class="chip">祛湿</span><span class="chip">季节</span></div></div>
+                <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+            </div></div>
+
+          <div class="msg"><div class="av bot"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-leaf"/></svg></div>
+            <div class="notebox"><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#B9873A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px"><use href="#p-alert"/></svg><span>祛湿类茶方建议放在上午饮用；孕妇请勿饮用含薏苡仁的配方。本建议仅作日常养生参考，不替代专业医疗建议。</span></div></div>
+
+          <div class="msg me"><div class="av me"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><use href="#p-user"/></svg></div>
+            <div class="bub me">最近老是睡不好，能加点什么吗</div></div>
+
+          <div class="msg"><div class="av bot"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-leaf"/></svg></div>
+            <div class="bub bot">可以在陈皮荷叶茶里加百合 6g，养阴安神；同时把喝茶时间提前到睡前 1 小时以上，减少夜里起夜。</div></div>
+
+          <div class="quickchips">
+            <span class="qc">还有别的茶方吗</span><span class="qc">看更多茶方</span><span class="qc">我的体质档案</span>
+          </div>
+        </div>
+
+        <div class="composer">
+          <div class="inp">说说最近的感受，比如「总觉得累」</div>
+          <div class="sd"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-send"/></svg></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="cap">问茶顾问 <span>流式对话 + 卡片化推荐 + 合规提示</span></div>
+  </div>
+
+  <!-- ============ 3. 体质测评 ============ -->
+  <div class="item">
+    <div class="device"><div class="screen">
+      <div class="sbar"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="bat"><i></i></span></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#17251D" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><use href="#p-arrowl"/></svg></span>体质测评</div>
+      <div class="body">
+        <div class="prog">
+          <div class="tr"><div class="fl" style="width:42%"></div></div>
+          <div class="mt"><span>第 5 / 12 步</span><span class="h">体质测评</span></div>
+        </div>
+        <div class="qhead">
+          <div class="t">你的排便情况更接近哪一种？</div>
+          <div class="d">观察最近一个月的常态即可</div>
+        </div>
+        <div class="opts">
+          <div class="opt">规律成形，基本每天一次<div class="radio"></div></div>
+          <div class="opt">偏稀、不成形，吃凉的就容易腹泻<div class="radio"></div></div>
+          <div class="opt on">黏腻不畅，容易粘马桶<div class="radio on"><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><use href="#p-check"/></svg></div></div>
+          <div class="opt">偏干结，排便需要用力<div class="radio"></div></div>
+        </div>
+
+        <div style="padding:0 16px;margin-top:22px;display:flex;gap:10px;">
+          <div class="btnline gh" style="flex:0 0 auto;padding:0 18px;"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#p-arrowl"/></svg>上一题</div>
+          <div style="flex:1;text-align:right;font-size:11px;color:#A3AEA7;display:flex;align-items:center;justify-content:flex-end;">选择一项后自动进入下一题</div>
+        </div>
+
+        <div style="padding:0 16px;margin-top:26px;">
+          <div class="disc"><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#98A69C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px"><use href="#p-info"/></svg><span>本测评为自评工具，结果仅用于日常养生方向参考，不等同于专业体质辨识，也不替代医疗建议。</span></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="cap">体质测评 <span>10 题单选 · 90 秒 · 自动推进</span></div>
+  </div>
+
+  <!-- ============ 4. 体质档案 ============ -->
+  <div class="item">
+    <div class="device"><div class="screen">
+      <div class="sbar"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="bat"><i></i></span></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#17251D" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><use href="#p-arrowl"/></svg></span>体质档案</div>
+      <div class="body">
+        <div class="rhero">
+          <div class="row g10"><div class="bdg" style="background:#6C8BA3"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><use href="#p-cloud"/></svg></div><span class="lb">主导体质</span></div>
+          <div class="nm">痰湿质</div>
+          <div class="sh">形体困重</div>
+          <div class="mt"><span class="pl" style="background:#EAF0F4;color:#6C8BA3;">有一定倾向</span><span class="pl" style="background:#F2F5F2;color:#6E7C73;font-weight:400;">兼夹 气虚质</span><span style="font-size:10.5px;color:#A0ABA4;">秋季 · 测评结果</span></div>
+          <div class="ds">痰湿凝聚，形体偏胖、腹部松软，容易困倦沉重，面部油脂偏多。</div>
+          <div class="chips" style="margin-top:12px;"><span class="chip" style="background:#fff;border:1px solid #E4EAE5;font-size:10.5px;padding:3px 9px;">女</span><span class="chip" style="background:#fff;border:1px solid #E4EAE5;font-size:10.5px;padding:3px 9px;">31–45 岁</span><span class="chip" style="background:#fff;border:1px solid #E4EAE5;font-size:10.5px;padding:3px 9px;">喜清淡</span></div>
+        </div>
+
+        <div class="pad">
+          <div class="sec"><div class="t">体质倾向分布</div><div class="m">重新测评<svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-refresh"/></svg></div></div>
+          <div class="card">
+            <div class="bar"><div class="n">痰湿质</div><div class="tr"><div class="fl" style="width:100%;background:#6C8BA3"></div></div><div class="v">100%</div></div>
+            <div class="bar"><div class="n">平和质</div><div class="tr"><div class="fl" style="width:50%;background:#4C9A6A"></div></div><div class="v">50%</div></div>
+            <div class="bar"><div class="n">气虚质</div><div class="tr"><div class="fl" style="width:33%;background:#C2A24A"></div></div><div class="v">33%</div></div>
+            <div class="bar"><div class="n">气郁质</div><div class="tr"><div class="fl" style="width:29%;background:#6E7BB5"></div></div><div class="v">29%</div></div>
+            <div style="margin-top:9px;font-size:10.5px;color:#A3AEA7;line-height:1.6;">百分比为该体质倾向度的相对参考值，不等于医学诊断结论。</div>
+          </div>
+
+          <div class="sec"><div class="t">秋季适配茶方</div><div class="m">全部茶方<svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div></div>
+          <div class="col g10">
+            <div class="tc"><div class="thumb t1"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg><span class="nt">性平</span></div>
+              <div class="f1"><div class="nm">陈皮荷叶茶</div><div class="sb clamp2">理气化痰 · 餐后解腻的清香之选</div><div class="chips"><span class="chip">解腻</span><span class="chip">化痰</span><span class="chip">餐后</span></div></div>
+              <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+            <div class="tc"><div class="thumb t2"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg><span class="nt">性平</span></div>
+              <div class="f1"><div class="nm">红豆薏米茶</div><div class="sb clamp2">健脾祛湿 · 缓解身体沉重与浮肿</div><div class="chips"><span class="chip">祛湿</span><span class="chip">季节</span><span class="chip">清淡</span></div></div>
+              <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+          </div>
+
+          <div class="sec"><div class="t">日常生活建议</div></div>
+          <div class="card">
+            <div class="col g10" style="font-size:13px;color:#33433A;">
+              <div class="row g10"><span style="width:20px;height:20px;border-radius:6px;background:#E8F1EC;color:#2E6B4F;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:0 0 auto;">1</span>减少甜食、油炸与含糖饮料</div>
+              <div class="row g10"><span style="width:20px;height:20px;border-radius:6px;background:#E8F1EC;color:#2E6B4F;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:0 0 auto;">2</span>每天保持 30 分钟以上活动</div>
+              <div class="row g10"><span style="width:20px;height:20px;border-radius:6px;background:#E8F1EC;color:#2E6B4F;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:0 0 auto;">3</span>居室注意通风除湿</div>
+            </div>
+          </div>
+
+          <div class="btnline" style="margin-top:20px;"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chat"/></svg>问顾问怎么调整</div>
+          <div style="display:flex;gap:10px;margin-top:10px;">
+            <div class="btnline lt" style="flex:1;"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-book"/></svg>体质科普</div>
+            <div class="btnline lt" style="flex:1;"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-edit"/></svg>复制档案</div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <div class="cap">体质档案 <span>主导 + 兼夹 + 倾向分布 + 适配茶方</span></div>
+  </div>
+
+  <!-- ============ 5. 茶方库 ============ -->
+  <div class="item">
+    <div class="device"><div class="screen">
+      <div class="sbar"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="bat"><i></i></span></span></div>
+      <div class="navbar">茶方库</div>
+      <div class="body">
+        <div style="padding:10px 16px 7px;">
+          <div class="row g8" style="height:42px;border-radius:999px;background:#fff;border:1px solid #E6EBE6;padding:0 13px;gap:7px;">
+            <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#A0ABA4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#p-search"/></svg>
+            <span style="flex:1;font-size:13px;color:#ADB7B0;">搜索茶方、食材或体质，如「祛湿」</span>
+          </div>
+          <div class="row g6" style="margin-top:9px;background:#E8F1EC;border-radius:9px;padding:10px 12px;font-size:12px;color:#2E6B4F;">
+            <svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#p-target"/></svg>
+            <span class="f1">只看适配我「痰湿质」的茶方</span>
+            <svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#7FA391" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg>
+          </div>
+          <div class="row g8" style="margin-top:10px;overflow:hidden;">
+            <span class="pill" style="padding:7px 15px;font-size:12.5px;border-width:1px;">全部</span>
+            <span class="pill on" style="padding:7px 15px;font-size:12.5px;">痰湿质</span>
+            <span class="pill" style="padding:7px 15px;font-size:12.5px;border-width:1px;">气虚质</span>
+            <span class="pill" style="padding:7px 15px;font-size:12.5px;border-width:1px;">阴虚质</span>
+          </div>
+        </div>
+
+        <div class="pad">
+          <div class="between" style="padding:13px 2px 10px;font-size:11.5px;color:#93A099;"><span>共 2 款茶方</span><span style="color:#2E6B4F;">重置搜索</span></div>
+          <div class="col g10">
+            <div class="tc"><div class="thumb t1"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg><span class="nt">性平</span></div>
+              <div class="f1"><div class="nm">红豆薏米茶</div><div class="sb clamp2">健脾祛湿 · 缓解身体沉重与晨起浮肿</div><div class="chips"><span class="chip br">痰湿质</span><span class="chip">祛湿</span><span class="chip">季节</span></div></div>
+              <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+            <div class="tc"><div class="thumb t2"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg><span class="nt">性平</span></div>
+              <div class="f1"><div class="nm">陈皮荷叶茶</div><div class="sb clamp2">理气化痰 · 餐后解腻的清香之选</div><div class="chips"><span class="chip br">痰湿质</span><span class="chip">解腻</span><span class="chip">餐后</span></div></div>
+              <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+            <div class="tc" style="margin-top:2px;"><div class="thumb t3"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg><span class="nt">性平</span></div>
+              <div class="f1" style="opacity:.45"><div class="nm">玫瑰陈皮茶</div><div class="sb clamp2">疏肝和胃 · 四季皆宜的日常代茶</div></div>
+              <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+          </div>
+
+          <div class="disc" style="margin-top:20px;"><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#98A69C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px"><use href="#p-info"/></svg>
+            <span>全部茶方食材均取自药食同源目录，用量为日常养生参考剂量，不构成医疗建议。</span></div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tb"><div class="iw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-home"/></svg></div><div class="lb">首页</div></div>
+        <div class="tb"><div class="iw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chat"/></svg></div><div class="lb">问茶</div></div>
+        <div class="tb on"><div class="iw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg></div><div class="lb">茶方</div></div>
+        <div class="tb"><div class="iw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-user"/></svg></div><div class="lb">我的</div></div>
+      </div>
+    </div></div>
+    <div class="cap">茶方库 <span>搜索 + 体质筛选 + 18 款茶方</span></div>
+  </div>
+
+  <!-- ============ 6. 茶方详情 ============ -->
+  <div class="item">
+    <div class="device"><div class="screen">
+      <div class="sbar" style="color:#fff"><span>9:41</span><span class="r"><span class="sig"><i style="background:#fff"></i><i style="background:#fff"></i><i style="background:#fff"></i><i style="background:#fff"></i></span><span class="bat" style="border-color:#fff"><i style="background:#fff"></i></span></span></div>
+      <div class="navbar" style="color:#fff;background:#2E6B4F;"><span class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><use href="#p-arrowl"/></svg></span></div>
+      <div class="body" style="background:#F5F7F4;">
+        <div class="dhero">
+          <div class="art"><svg style="width:74px;height:74px" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg></div>
+          <div class="ct">
+            <div class="bdgs"><span class="bd"><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#p-cloud"/></svg>痰湿质适配</span><span class="bd" style="background:rgba(255,255,255,.1)">秋季适宜</span></div>
+            <div class="nm">红豆薏米茶</div>
+            <div class="sb">健脾祛湿 · 缓解身体沉重与晨起浮肿</div>
+          </div>
+        </div>
+
+        <div class="pad">
+          <div class="facts">
+            <div class="f"><div class="l">性味</div><div class="v">性平</div></div>
+            <div class="vl"></div>
+            <div class="f"><div class="l">口感</div><div class="v">平淡微甘</div></div>
+            <div class="vl"></div>
+            <div class="f"><div class="l">场景</div><div class="v">雨季祛湿</div></div>
+          </div>
+
+          <div class="sec"><div class="t">配方组成</div><div class="m">3 味食材</div></div>
+          <div class="card">
+            <div class="ing"><div class="ii"><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#4E9A72" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-leaf"/></svg></div><div class="in2">赤小豆</div><div class="ir">利水消肿</div><div class="ia">10g</div></div>
+            <div class="ing"><div class="ii"><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#4E9A72" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-leaf"/></svg></div><div class="in2">薏苡仁</div><div class="ir">健脾祛湿</div><div class="ia">10g</div></div>
+            <div class="ing"><div class="ii"><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#4E9A72" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-leaf"/></svg></div><div class="in2">茯苓</div><div class="ir">健脾渗湿</div><div class="ia">6g</div></div>
+            <div style="margin-top:12px;padding:11px 12px;border-radius:9px;background:#F4F6F4;font-size:10.5px;color:#8B978F;line-height:1.6;">以上为单人一次日常养生参考用量，请勿自行加倍。</div>
+          </div>
+
+          <div class="sec"><div class="t">核心作用</div></div>
+          <div class="card">
+            <div class="col g10" style="font-size:13px;color:#33433A;">
+              <div class="row g10"><span style="width:18px;height:18px;border-radius:50%;background:#4E9A72;display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><svg style="width:11px;height:11px" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><use href="#p-check"/></svg></span>健脾祛湿，缓解身体沉重感</div>
+              <div class="row g10"><span style="width:18px;height:18px;border-radius:50%;background:#4E9A72;display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><svg style="width:11px;height:11px" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><use href="#p-check"/></svg></span>利水渗湿，改善晨起面部浮肿</div>
+              <div class="row g10"><span style="width:18px;height:18px;border-radius:50%;background:#4E9A72;display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><svg style="width:11px;height:11px" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><use href="#p-check"/></svg></span>适合多雨季节与久坐人群</div>
+            </div>
+          </div>
+
+          <div class="sec"><div class="t">冲泡方法</div></div>
+          <div class="card">
+            <div class="col g12">
+              <div class="row g10"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#4E86A8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-drop"/></svg><span style="font-size:11.5px;color:#93A099;">用水</span><span style="font-size:13px;color:#33433A;">700ml 清水</span></div>
+              <div class="row g10"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#B9873A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-clock"/></svg><span style="font-size:11.5px;color:#93A099;">时间</span><span style="font-size:13px;color:#33433A;">煮 20 分钟</span></div>
+            </div>
+            <div class="divider"></div>
+            <div class="col g10" style="font-size:13px;color:#33433A;">
+              <div class="row g10"><span style="width:20px;height:20px;border-radius:6px;background:#E8F1EC;color:#2E6B4F;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:0 0 auto;">1</span>赤小豆、薏苡仁提前浸泡 2 小时</div>
+              <div class="row g10"><span style="width:20px;height:20px;border-radius:6px;background:#E8F1EC;color:#2E6B4F;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:0 0 auto;">2</span>加清水煮沸后转小火煮 20 分钟</div>
+            </div>
+          </div>
+
+          <div class="sec"><div class="t">注意事项</div></div>
+          <div style="padding:4px 13px;border-radius:12px;background:#FBF5E8;border:1px solid #F0E2C4;font-size:12.5px;color:#83631F;line-height:1.68;">
+            <div class="row g10" style="padding:9px 0;align-items:flex-start;"><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#B9873A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="margin-top:3px"><use href="#p-alert"/></svg><span>孕妇请勿饮用（含薏苡仁）</span></div>
+            <div class="row g10" style="padding:9px 0;align-items:flex-start;border-top:1px solid #F3E8CE;"><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#B9873A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="margin-top:3px"><use href="#p-alert"/></svg><span>体质偏干、便秘者减少频次</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(255,255,255,.97);border-top:1px solid #EDF0EC;">
+        <div class="col" style="width:48px;align-items:center;gap:1px;"><svg class="ic" viewBox="0 0 24 24" fill="#B9873A" stroke="#B9873A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-bookmark"/></svg><span style="font-size:9.5px;color:#B9873A;">已收藏</span></div>
+        <div class="col" style="width:48px;align-items:center;gap:1px;"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#84928A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-edit"/></svg><span style="font-size:9.5px;color:#84928A;">复制配方</span></div>
+        <div class="col" style="width:48px;align-items:center;gap:1px;"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#84928A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-share"/></svg><span style="font-size:9.5px;color:#84928A;">分享</span></div>
+        <div class="btnline" style="flex:1;height:44px;"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chat"/></svg>问顾问是否适合我</div>
+      </div>
+    </div></div>
+    <div class="cap">茶方详情 <span>配方克重 · 冲泡步骤 · 场景 · 禁忌</span></div>
+  </div>
+
+  <!-- ============ 7. 我的 ============ -->
+  <div class="item">
+    <div class="device"><div class="screen">
+      <div class="sbar"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="bat"><i></i></span></span></div>
+      <div class="navbar">我的</div>
+      <div class="body">
+        <div class="pad">
+          <div class="pcard">
+            <div class="row g16" style="align-items:center;">
+              <div class="av2" style="background:#6C8BA3"><svg class="ic lg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><use href="#p-cloud"/></svg></div>
+              <div class="f1"><div class="nm">痰湿质</div><div class="mt">形体困重 · 有一定倾向</div></div>
+              <div class="btn">查看档案<svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+            </div>
+            <div class="stats">
+              <div class="st"><div class="num">4</div><div class="lb">收藏茶方</div></div>
+              <div class="vline"></div>
+              <div class="st"><div class="num">12</div><div class="lb">浏览记录</div></div>
+              <div class="vline"></div>
+              <div class="st"><div class="num">18</div><div class="lb">茶方总数</div></div>
+            </div>
+          </div>
+
+          <div class="sec"><div class="t">我的数据</div></div>
+          <div class="card" style="padding:6px 16px;">
+            <div class="cell"><div class="ico" style="background:#E8F1EC"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-bookmark"/></svg></div><span class="tt">我的收藏</span><span class="vv">4 款</span><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+            <div class="cell"><div class="ico" style="background:#FAF2E4"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#B9873A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-history"/></svg></div><span class="tt">浏览记录</span><span class="vv">12 条</span><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+            <div class="cell"><div class="ico" style="background:#EAF0F6"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#4E7EA8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-refresh"/></svg></div><span class="tt">重新测评</span><span class="vv">更新体质档案</span><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+          </div>
+
+          <div class="sec"><div class="t">养生工具</div></div>
+          <div class="card" style="padding:6px 16px;">
+            <div class="cell"><div class="ico" style="background:#E8F1EC"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chat"/></svg></div><span class="tt">问茶顾问</span><span class="vv">按体质配茶</span><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+            <div class="cell"><div class="ico" style="background:#E8F1EC"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#4E9A72" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-book"/></svg></div><span class="tt">养生知识库</span><span class="vv">体质 · 食材 · 常识</span><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+          </div>
+
+          <div class="sec"><div class="t">其他</div></div>
+          <div class="card" style="padding:6px 16px;">
+            <div class="cell"><div class="ico" style="background:#F2F5F2"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#6E7C73" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-shield"/></svg></div><span class="tt">免责声明与隐私</span><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+            <div class="cell"><div class="ico" style="background:#F2F5F2"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#6E7C73" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-trash"/></svg></div><span class="tt">清除本地数据</span><svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+          </div>
+
+          <div style="margin-top:18px;display:flex;gap:6px;padding:12px;border-radius:10px;background:#F1F4F1;font-size:11px;color:#8B978F;line-height:1.7;">
+            <svg class="ic xs" viewBox="0 0 24 24" fill="none" stroke="#8B978F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex:0 0 auto"><use href="#p-lock"/></svg>
+            <span>体质信息、收藏与浏览记录全部保存在你本机，不会上传服务器。你可以随时在「清除本地数据」中删除全部记录。</span>
+          </div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tb"><div class="iw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-home"/></svg></div><div class="lb">首页</div></div>
+        <div class="tb"><div class="iw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chat"/></svg></div><div class="lb">问茶</div></div>
+        <div class="tb"><div class="iw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#93A099" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-tea"/></svg></div><div class="lb">茶方</div></div>
+        <div class="tb on"><div class="iw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#2E6B4F" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><use href="#p-user"/></svg></div><div class="lb">我的</div></div>
+      </div>
+    </div></div>
+    <div class="cap">我的 <span>体质档案 + 数据 + 隐私说明</span></div>
+  </div>
+
+  <!-- ============ 8. 养生知识库 ============ -->
+  <div class="item">
+    <div class="device"><div class="screen">
+      <div class="sbar"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="bat"><i></i></span></span></div>
+      <div class="navbar">养生知识库</div>
+      <div class="body">
+        <div style="padding:10px 16px 6px;">
+          <div class="row g8" style="overflow:hidden;">
+            <span class="pill on" style="padding:8px 17px;font-size:13px;">九种体质</span>
+            <span class="pill" style="padding:8px 17px;font-size:13px;border-width:1px;">食材科普</span>
+            <span class="pill" style="padding:8px 17px;font-size:13px;border-width:1px;">茶饮常识</span>
+          </div>
+        </div>
+        <div class="pad">
+          <div style="padding:13px 2px 12px;font-size:12px;color:#87958B;line-height:1.7;">九种基本体质是中医养生的重要参考。了解自己的体质倾向，才能选对日常茶饮的方向。</div>
+          <div class="col g10">
+            <div class="kitem"><div class="ic3" style="background:#EAF0F4"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#6C8BA3" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-cloud"/></svg></div>
+              <div class="f1"><div class="row g6"><span class="nm">痰湿质</span><span class="chip br" style="font-size:9.5px;">我的体质</span></div><div class="sh">形体困重 · 2 款适配茶方</div><div class="br clamp2">痰湿凝聚，形体偏胖、腹部松软，容易困倦沉重，面部油脂偏多。</div></div>
+              <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+            <div class="kitem"><div class="ic3" style="background:#F7EBF0"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#B4738F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-moon"/></svg></div>
+              <div class="f1"><div class="row g6"><span class="nm">阴虚质</span></div><div class="sh">口燥咽干 · 2 款适配茶方</div><div class="br clamp2">阴液不足，容易口燥咽干、手足心热，性情偏急躁，睡眠偏浅。</div></div>
+              <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+            <div class="kitem"><div class="ic3" style="background:#FAEFE5"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#CE8552" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-sun"/></svg></div>
+              <div class="f1"><div class="row g6"><span class="nm">阳虚质</span></div><div class="sh">畏寒肢冷 · 2 款适配茶方</div><div class="br clamp2">阳气不足，畏寒怕冷，手脚发凉，喜热饮食，精神容易倦怠。</div></div>
+              <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="#C6CFC9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#p-chev"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <div class="cap">养生知识库 <span>体质 · 22 味食材 · 10 条常识</span></div>
+  </div>
+
+</div>
+</body>
+</html>

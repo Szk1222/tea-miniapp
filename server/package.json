@@ -1,0 +1,24 @@
+{
+  "name": "chalifang-agent-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "茶历方养生茶顾问 Agent 服务：Function Call 工具编排 + 知识库检索增强 + SSE 流式输出",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "eval": "node scripts/eval.js",
+    "index:build": "node scripts/build-index.js"
+  },
+  "dependencies": {},
+  "keywords": [
+    "agent",
+    "function-calling",
+    "rag",
+    "sse"
+  ],
+  "license": "UNLICENSED"
+}

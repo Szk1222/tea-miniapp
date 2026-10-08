@@ -1,0 +1,467 @@
+.page {
+  padding-bottom: 20rpx;
+}
+
+/* ---------------- 主视觉 ---------------- */
+.hero {
+  position: relative;
+  height: 400rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  border-radius: 0 0 40rpx 40rpx;
+}
+
+.hero--1 { background: linear-gradient(150deg, #4C9B76 0%, #2E6B4F 100%); }
+.hero--2 { background: linear-gradient(150deg, #C4A055 0%, #8A6A24 100%); }
+.hero--3 { background: linear-gradient(150deg, #8E86C4 0%, #5C548F 100%); }
+.hero--4 { background: linear-gradient(150deg, #C4835F 0%, #8E4F38 100%); }
+
+.hero__art {
+  position: absolute;
+  right: -30rpx;
+  top: 10rpx;
+  opacity: 0.22;
+}
+
+.hero__content {
+  position: relative;
+  padding: 0 40rpx 44rpx;
+}
+
+.hero__badges {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 22rpx;
+}
+
+.hero__badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
+  color: #FFFFFF;
+  font-size: 21rpx;
+}
+
+.hero__badge--soft {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.hero__name {
+  font-size: 56rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  letter-spacing: 4rpx;
+  line-height: 1.25;
+}
+
+.hero__sub {
+  margin-top: 14rpx;
+  font-size: 25rpx;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.6;
+}
+
+/* ---------------- 性味速览 ---------------- */
+.facts {
+  margin-top: -44rpx;
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  border: 1rpx solid #E9EDE8;
+  box-shadow: 0 10rpx 30rpx rgba(28, 56, 41, 0.08);
+  padding: 28rpx 0;
+}
+
+.facts__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 12rpx;
+  min-width: 0;
+}
+
+.facts__label {
+  font-size: 21rpx;
+  color: #A0ABA4;
+}
+
+.facts__value {
+  margin-top: 8rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #24352C;
+  max-width: 100%;
+}
+
+.facts__line {
+  width: 1rpx;
+  height: 48rpx;
+  background: #EDF1EE;
+}
+
+/* ---------------- 配方 ---------------- */
+.ing {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  padding: 22rpx 0;
+}
+
+.ing + .ing {
+  border-top: 1rpx solid #F1F3F0;
+}
+
+.ing__icon {
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 16rpx;
+  background: #EEF6F1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.ing__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #24352C;
+  width: 150rpx;
+  flex: 0 0 auto;
+}
+
+.ing__role {
+  flex: 1;
+  font-size: 23rpx;
+  color: #87958B;
+}
+
+.ing__amount {
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #2E6B4F;
+  flex: 0 0 auto;
+}
+
+.ing-note {
+  margin-top: 22rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 20rpx 22rpx;
+  border-radius: 16rpx;
+  background: #F4F6F4;
+  font-size: 21rpx;
+  color: #8B978F;
+  line-height: 1.65;
+}
+
+/* ---------------- 作用 ---------------- */
+.feat {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 14rpx 0;
+}
+
+.feat__check {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #4E9A72;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-top: 6rpx;
+}
+
+.feat__text {
+  flex: 1;
+  font-size: 27rpx;
+  color: #33433A;
+  line-height: 1.68;
+}
+
+/* ---------------- 冲泡 ---------------- */
+.brew-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 22rpx;
+}
+
+.brew-meta__item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.brew-meta__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 16rpx;
+}
+
+.brew-meta__label {
+  font-size: 23rpx;
+  color: #93A099;
+  flex: 0 0 auto;
+}
+
+.brew-meta__value {
+  flex: 1;
+  font-size: 26rpx;
+  color: #33433A;
+}
+
+.step {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 18rpx;
+  padding: 12rpx 0;
+}
+
+.step__idx {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 12rpx;
+  background: #E8F1EC;
+  color: #2E6B4F;
+  font-size: 22rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-top: 4rpx;
+}
+
+.step__text {
+  flex: 1;
+  font-size: 27rpx;
+  color: #33433A;
+  line-height: 1.68;
+}
+
+.brew-foot {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid #F1F3F0;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.brew-foot__item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14rpx;
+  font-size: 25rpx;
+  color: #4A5A51;
+}
+
+/* ---------------- 场景 ---------------- */
+.scene-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.scene {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10rpx;
+  padding: 20rpx 26rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #DCEAE1;
+  font-size: 25rpx;
+  color: #2E6B4F;
+}
+
+/* ---------------- 注意 ---------------- */
+.caution {
+  padding: 8rpx 26rpx;
+  border-radius: 24rpx;
+  background: #FBF5E8;
+  border: 1rpx solid #F0E2C4;
+}
+
+.caution__item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 14rpx;
+  padding: 18rpx 0;
+}
+
+.caution__item + .caution__item {
+  border-top: 1rpx solid #F3E8CE;
+}
+
+.caution__text {
+  flex: 1;
+  font-size: 25rpx;
+  color: #83631F;
+  line-height: 1.68;
+}
+
+/* ---------------- 相关 ---------------- */
+.tea-list__item {
+  margin-bottom: 20rpx;
+}
+
+/* ---------------- 免责 ---------------- */
+.disclaimer {
+  margin-top: 36rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: #F1F4F1;
+}
+
+.disclaimer__text {
+  flex: 1;
+  font-size: 22rpx;
+  color: #8B978F;
+  line-height: 1.7;
+}
+
+/* ---------------- 底部操作 ---------------- */
+.bottom-bar-gap {
+  height: 160rpx;
+}
+
+.bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 900;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(18rpx);
+  border-top: 1rpx solid #EDF0EC;
+  box-shadow: 0 -4rpx 24rpx rgba(28, 56, 41, 0.05);
+}
+
+.bottom-bar__inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 16rpx 28rpx;
+}
+
+/* 元素间距统一用 margin，不依赖 flex gap：
+   gap 在部分 WebView 上不生效，会让图标和文字直接贴在一起 */
+.bottom-bar__spaced {
+  margin-left: 10rpx;
+}
+
+.bottom-bar__icon-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 92rpx;
+  width: 92rpx;
+  max-width: 92rpx;
+  overflow: hidden;
+}
+
+.bottom-bar__icon-btn:active {
+  opacity: 0.6;
+}
+
+.bottom-bar__icon-label {
+  margin-top: 2rpx;
+  font-size: 19rpx;
+  color: #84928A;
+  white-space: nowrap;
+}
+
+.bottom-bar__icon-label.is-on {
+  color: #B9873A;
+}
+
+.bottom-bar__share {
+  flex: 0 0 92rpx;
+  width: 92rpx;
+  max-width: 92rpx;
+  height: 88rpx;
+  padding: 0;
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border-radius: 0;
+}
+
+.bottom-bar__share::after {
+  border: none;
+}
+
+/* 主按钮：可压缩但内容不外溢（min-width:0 + overflow 兜住，任何机型都不会撑出屏幕） */
+.bottom-bar__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 88rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  background: #2E6B4F;
+  color: #FFFFFF;
+  font-size: 28rpx;
+  font-weight: 600;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 6rpx 16rpx rgba(46, 107, 79, 0.2);
+}
+
+.bottom-bar__main:active {
+  background: #21503A;
+}
+
+/* 图标不压缩；文字过长时省略号收口，不顶出胶囊 */
+.bottom-bar__main-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 12rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

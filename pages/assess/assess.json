@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "体质测评",
+  "navigationBarBackgroundColor": "#F5F7F4",
+  "usingComponents": {
+    "icon": "../../components/icon/icon"
+  }
+}

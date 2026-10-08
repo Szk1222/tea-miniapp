@@ -1,0 +1,456 @@
+/* ---------------- Hero ---------------- */
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 36rpx 32rpx 44rpx;
+  background: linear-gradient(158deg, #2F6E52 0%, #255740 58%, #1E4A36 100%);
+  border-radius: 0 0 44rpx 44rpx;
+}
+
+.hero__glow {
+  position: absolute;
+  right: -140rpx;
+  top: -160rpx;
+  width: 460rpx;
+  height: 460rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 68%);
+}
+
+.hero__row {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hero__brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.hero__logo {
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 22rpx;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1rpx solid rgba(255, 255, 255, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero__brand-text {
+  margin-left: 18rpx;
+}
+
+.hero__name {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  letter-spacing: 2rpx;
+  line-height: 1.2;
+}
+
+.hero__slogan {
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.62);
+  letter-spacing: 2rpx;
+}
+
+.hero__season {
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1rpx solid rgba(255, 255, 255, 0.2);
+  color: #EAF3EE;
+  font-size: 22rpx;
+  letter-spacing: 1rpx;
+}
+
+.hero__title {
+  position: relative;
+  margin-top: 40rpx;
+  font-size: 46rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  letter-spacing: 1rpx;
+  line-height: 1.3;
+}
+
+.hero__desc {
+  position: relative;
+  margin-top: 14rpx;
+  font-size: 25rpx;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.7;
+}
+
+.hero__actions {
+  position: relative;
+  margin-top: 36rpx;
+  display: flex;
+  flex-direction: row;
+  gap: 20rpx;
+}
+
+.hero__btn {
+  flex: 1;
+  height: 92rpx;
+  border-radius: 999rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  letter-spacing: 0.5rpx;
+}
+
+.hero__btn--solid {
+  background: #FFFFFF;
+  color: #2E6B4F;
+  box-shadow: 0 12rpx 28rpx rgba(0, 0, 0, 0.16);
+}
+
+.hero__btn--solid:active {
+  background: #EDF4F0;
+}
+
+.hero__btn--outline {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5rpx solid rgba(255, 255, 255, 0.4);
+  color: #FFFFFF;
+}
+
+.hero__btn--outline:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ---------------- 体质档案卡 ---------------- */
+.profile-card {
+  margin-top: 32rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F3F8F4 100%);
+  border: 1rpx solid #DCEAE1;
+  box-shadow: 0 6rpx 24rpx rgba(46, 107, 79, 0.07);
+}
+
+.profile-card:active {
+  transform: scale(0.99);
+}
+
+.profile-card__label {
+  font-size: 22rpx;
+  color: #8B9A90;
+  letter-spacing: 0.5rpx;
+}
+
+.profile-card__name {
+  margin-top: 10rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+}
+
+.profile-card__cn {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #1F3B2C;
+  letter-spacing: 1rpx;
+}
+
+.profile-card__short {
+  margin-left: 14rpx;
+  font-size: 24rpx;
+  color: #5A6A61;
+}
+
+.profile-card__meta {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #93A099;
+}
+
+.profile-card__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12rpx;
+}
+
+.profile-card__more {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  font-size: 22rpx;
+  color: #93A099;
+}
+
+/* ---------------- 未测评引导 ---------------- */
+.intro-card {
+  margin-top: 32rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+  padding: 30rpx;
+  border-radius: 28rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #EFE7D6;
+  box-shadow: 0 6rpx 24rpx rgba(185, 135, 58, 0.07);
+}
+
+.intro-card:active {
+  background: #FDFAF4;
+}
+
+.intro-card__icon {
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 24rpx;
+  background: #FAF2E4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.intro-card__title {
+  font-size: 29rpx;
+  font-weight: 600;
+  color: #17251D;
+}
+
+.intro-card__desc {
+  margin-top: 6rpx;
+  font-size: 23rpx;
+  color: #87958B;
+}
+
+/* ---------------- 快捷入口 ---------------- */
+.quick {
+  margin-top: 36rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 30rpx 12rpx;
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  border: 1rpx solid #E9EDE8;
+  box-shadow: 0 2rpx 8rpx rgba(28, 56, 41, 0.04);
+}
+
+.quick__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.quick__item:active {
+  opacity: 0.7;
+}
+
+.quick__icon {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 26rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quick__icon--green { background: #E8F1EC; }
+.quick__icon--gold { background: #FAF2E4; }
+.quick__icon--blue { background: #EAF0F6; }
+.quick__icon--rose { background: #F7EBF0; }
+
+.quick__text {
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  color: #43514A;
+}
+
+/* ---------------- 当季推荐 ---------------- */
+.season-tip {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 20rpx;
+  background: #FAF6EC;
+  margin-bottom: 22rpx;
+}
+
+.season-tip__text {
+  flex: 1;
+  font-size: 23rpx;
+  color: #8A6524;
+  line-height: 1.65;
+}
+
+.season-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.season-list {
+  display: flex;
+  flex-direction: row;
+  gap: 22rpx;
+  padding-bottom: 8rpx;
+}
+
+.season-item {
+  width: 400rpx;
+  flex: 0 0 auto;
+}
+
+/* ---------------- 九种体质 ---------------- */
+/* 两列自适应网格。这里刻意避开两个真机兼容坑：
+   1) 不用 calc(50% - 9rpx)——部分安卓 WebView 上 rpx 参与 calc 会让整条 width 声明失效，
+      退化后卡片按内容宽度排布（挤成一行/一列）；
+   2) 不用 flex 的 gap——老 WebView 不支持，改用 justify-content: space-between 撑出间距；
+   3) 显式写 box-sizing，保证 width: 48.4% 已含内边距与描边，
+      否则「两个 48.4% + 左右内边距」会超过 100% 被挤成单列。 */
+.const-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.const-item {
+  box-sizing: border-box;
+  width: 48.4%;
+  flex: 0 0 auto;
+  margin-bottom: 18rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 24rpx 20rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E9EDE8;
+  border-radius: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(28, 56, 41, 0.035);
+}
+
+.const-item--hover {
+  background: #FAFBF9;
+  transform: scale(0.985);
+}
+
+.const-item__icon {
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+/* 图标与文字的间距改由 margin 撑开（不再依赖 flex gap） */
+.const-item__body {
+  flex: 1;
+  min-width: 0;
+  margin-left: 16rpx;
+  overflow: hidden;
+}
+
+.const-item__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #17251D;
+  line-height: 1.3;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.const-item__short {
+  margin-top: 4rpx;
+  font-size: 21rpx;
+  color: #93A099;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---------------- 知识库 ---------------- */
+.know-card {
+  background: #FFFFFF;
+  border: 1rpx solid #E9EDE8;
+  border-radius: 28rpx;
+  padding: 30rpx;
+  box-shadow: 0 2rpx 8rpx rgba(28, 56, 41, 0.04);
+}
+
+.know-card:active {
+  background: #FAFBF9;
+}
+
+.know-card__row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.know-card__icon {
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 24rpx;
+  background: #E8F1EC;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.know-card__icon--gold {
+  background: #FAF2E4;
+}
+
+.know-card__title {
+  font-size: 29rpx;
+  font-weight: 600;
+  color: #17251D;
+}
+
+.know-card__desc {
+  margin-top: 6rpx;
+  font-size: 23rpx;
+  color: #87958B;
+  line-height: 1.55;
+}
+
+/* ---------------- 免责声明 ---------------- */
+.disclaimer {
+  margin-top: 44rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: #F1F4F1;
+}
+
+.disclaimer__text {
+  flex: 1;
+  font-size: 22rpx;
+  color: #8B978F;
+  line-height: 1.7;
+}

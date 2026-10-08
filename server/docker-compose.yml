@@ -1,0 +1,25 @@
+# 在项目根目录执行：docker compose -f server/docker-compose.yml up -d
+services:
+  agent:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: chalifang-agent:latest
+    container_name: chalifang-agent
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    env_file:
+      - .env
+    environment:
+      PORT: "8787"
+      HOST: 0.0.0.0
+      LOG_LEVEL: info
+    # 向量索引缓存挂出来，容器重启不用重新调 embedding 接口
+    volumes:
+      - ./cache:/app/server/.cache
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

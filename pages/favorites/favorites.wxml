@@ -1,0 +1,54 @@
+<view class="page">
+  <view class="seg">
+    <view class="seg__item {{tab === 'fav' ? 'is-on' : ''}}" data-tab="fav" bindtap="switchTab">
+      <text>我的收藏</text>
+      <text class="seg__badge">{{favList.length}}</text>
+    </view>
+    <view class="seg__item {{tab === 'history' ? 'is-on' : ''}}" data-tab="history" bindtap="switchTab">
+      <text>浏览记录</text>
+      <text class="seg__badge">{{historyList.length}}</text>
+    </view>
+  </view>
+
+  <view class="container">
+    <!-- 收藏 -->
+    <block wx:if="{{tab === 'fav'}}">
+      <view wx:if="{{favList.length}}" class="tea-list">
+        <view class="tea-list__item" wx:for="{{favList}}" wx:key="id">
+          <tea-card tea="{{item}}" variant="row" showConstitution="{{true}}" constitutionName="{{item.constitutionName}}" favorite="{{true}}" bind:select="openTea" />
+        </view>
+      </view>
+      <view wx:else class="empty">
+        <icon name="bookmark" size="{{96}}" color="#C6D2CA" weight="{{1.4}}" />
+        <view class="empty-text">还没有收藏的茶方</view>
+        <view class="empty-sub">在茶方详情页点击「收藏」，方便随时回看配方</view>
+        <view class="btn btn-light empty-btn" bindtap="goTea">
+          <icon name="tea" size="{{30}}" color="#2E6B4F" weight="{{1.8}}" />
+          <text>去逛茶方库</text>
+        </view>
+      </view>
+    </block>
+
+    <!-- 浏览记录 -->
+    <block wx:else>
+      <view wx:if="{{historyList.length}}">
+        <view class="bar-note">
+          <text>最近浏览 {{historyList.length}} 条</text>
+          <text class="bar-note__action" bindtap="clearHistory">清空</text>
+        </view>
+        <view class="tea-list">
+          <view class="tea-list__item" wx:for="{{historyList}}" wx:key="id">
+            <tea-card tea="{{item}}" variant="row" showConstitution="{{true}}" constitutionName="{{item.constitutionName}}" bind:select="openTea" />
+          </view>
+        </view>
+      </view>
+      <view wx:else class="empty">
+        <icon name="history" size="{{96}}" color="#C6D2CA" weight="{{1.4}}" />
+        <view class="empty-text">暂无浏览记录</view>
+        <view class="empty-sub">看过的茶方会自动记录在这里，最多保留 30 条</view>
+      </view>
+    </block>
+
+    <view class="page-bottom-gap"></view>
+  </view>
+</view>

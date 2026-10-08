@@ -1,0 +1,164 @@
+<view class="page assess">
+
+  <!-- 进度 -->
+  <view class="progress">
+    <view class="progress__track">
+      <view class="progress__fill" style="width:{{step === 0 ? 4 : percent}}%"></view>
+    </view>
+    <view class="progress__meta">
+      <text class="progress__step">第 {{step + 1}} / {{total}} 步</text>
+      <text class="progress__hint">{{kind === 'q' ? '体质测评' : '基础信息'}}</text>
+    </view>
+  </view>
+
+  <view class="container">
+
+    <!-- STEP 1 基础信息 -->
+    <block wx:if="{{kind === 'basic1'}}">
+      <view class="head">
+        <view class="head__title">先了解一下你</view>
+        <view class="head__desc">基础信息只用于匹配更适合的茶饮方向，全部保存在你本机。</view>
+      </view>
+
+      <view class="field">
+        <view class="field__label">性别</view>
+        <view class="opt-row">
+          <view
+            wx:for="{{genders}}"
+            wx:key="*this"
+            class="opt-chip {{gender === item ? 'is-on' : ''}}"
+            data-v="{{item}}"
+            bindtap="pickGender"
+          >{{item}}</view>
+        </view>
+      </view>
+
+      <view class="field">
+        <view class="field__label">年龄段</view>
+        <view class="opt-col">
+          <view
+            wx:for="{{ages}}"
+            wx:key="*this"
+            class="opt-line {{age === item ? 'is-on' : ''}}"
+            data-v="{{item}}"
+            bindtap="pickAge"
+          >
+            <text class="opt-line__text">{{item}}</text>
+            <view class="radio {{age === item ? 'radio--on' : ''}}">
+              <icon wx:if="{{age === item}}" name="check" size="{{24}}" color="#FFFFFF" weight="{{2.4}}" />
+            </view>
+          </view>
+        </view>
+        <view wx:if="{{age === '18 岁以下'}}" class="inline-warn">
+          <icon name="alert" size="{{28}}" color="#B9873A" weight="{{1.7}}" />
+          <text>未成年人身体尚在发育，建议以日常饮食为主，暂不饮用含药材成分的茶饮。</text>
+        </view>
+      </view>
+    </block>
+
+    <!-- STEP 2 需要留意的情况 -->
+    <block wx:elif="{{kind === 'basic2'}}">
+      <view class="head">
+        <view class="head__title">几个需要留意的情况</view>
+        <view class="head__desc">这些信息会用于前置风险提示，可跳过不选。</view>
+      </view>
+
+      <view class="field">
+        <view class="field__label">目前所处阶段</view>
+        <view class="opt-row">
+          <view
+            wx:for="{{stages}}"
+            wx:key="*this"
+            class="opt-chip {{stage === item ? 'is-on' : ''}}"
+            data-v="{{item}}"
+            bindtap="pickStage"
+          >{{item}}</view>
+        </view>
+      </view>
+
+      <view class="field">
+        <view class="field__label">基础健康情况<text class="field__sub">可多选</text></view>
+        <view class="opt-row">
+          <view
+            wx:for="{{conditions}}"
+            wx:key="*this"
+            class="opt-chip {{condSel[item] ? 'is-on' : ''}}"
+            data-v="{{item}}"
+            bindtap="toggleCond"
+          >{{item}}</view>
+        </view>
+      </view>
+
+      <view class="field">
+        <view class="field__label">口味偏好<text class="field__sub">可多选</text></view>
+        <view class="opt-row">
+          <view
+            wx:for="{{tastes}}"
+            wx:key="*this"
+            class="opt-chip {{tasteSel[item] ? 'is-on' : ''}}"
+            data-v="{{item}}"
+            bindtap="toggleTaste"
+          >{{item}}</view>
+        </view>
+      </view>
+
+      <view class="field">
+        <view class="field__label">食材过敏史<text class="field__sub">选填</text></view>
+        <input
+          class="field__input"
+          value="{{allergy}}"
+          placeholder="例如：对芒果过敏，可留空"
+          placeholder-class="field__ph"
+          bindinput="onAllergy"
+        />
+      </view>
+    </block>
+
+    <!-- STEP 3+ 题目 -->
+    <block wx:else>
+      <view class="head">
+        <view class="head__title">{{q.title}}</view>
+        <view class="head__desc">{{q.hint}}</view>
+      </view>
+
+      <view class="opt-col">
+        <view
+          wx:for="{{q.options}}"
+          wx:key="label"
+          class="opt-line {{selected === index ? 'is-on' : ''}}"
+          data-idx="{{index}}"
+          bindtap="chooseOption"
+        >
+          <text class="opt-line__text">{{item.label}}</text>
+          <view class="radio {{selected === index ? 'radio--on' : ''}}">
+            <icon wx:if="{{selected === index}}" name="check" size="{{24}}" color="#FFFFFF" weight="{{2.4}}" />
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <!-- 底部操作 -->
+    <view class="actions">
+      <view class="btn btn-ghost actions__back" bindtap="prev">
+        <icon name="arrowLeft" size="{{30}}" color="#2E6B4F" weight="{{1.8}}" />
+        <text>{{step === 0 ? '返回' : '上一题'}}</text>
+      </view>
+      <view
+        wx:if="{{kind !== 'q'}}"
+        class="btn btn-primary actions__next {{kind === 'basic1' && !basicReady ? 'is-disabled' : ''}}"
+        bindtap="next"
+      >
+        <text>{{step === 0 ? '下一步' : '开始答题'}}</text>
+        <icon name="arrowRight" size="{{30}}" color="#FFFFFF" weight="{{1.8}}" />
+      </view>
+      <view wx:else class="actions__tip">选择一项后自动进入下一题</view>
+    </view>
+
+    <view class="assess-note">
+      <icon name="info" size="{{26}}" color="#98A69C" weight="{{1.7}}" />
+      <text>本测评为自评工具，结果仅用于日常养生方向参考，不等同于专业体质辨识，也不替代医疗建议。</text>
+    </view>
+
+    <view class="page-bottom-gap"></view>
+  </view>
+</view>

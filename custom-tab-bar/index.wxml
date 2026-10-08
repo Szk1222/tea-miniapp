@@ -1,0 +1,22 @@
+<view class="tabbar {{hidden ? 'tabbar--hidden' : ''}}">
+  <view class="tabbar__inner">
+    <view
+      wx:for="{{list}}"
+      wx:key="pagePath"
+      class="tabbar__item"
+      data-index="{{index}}"
+      bindtap="onTap"
+    >
+      <view class="tabbar__icon-wrap {{selected === index ? 'is-on' : ''}}">
+        <icon
+          name="{{item.icon}}"
+          size="{{44}}"
+          weight="{{selected === index ? 2.1 : 1.7}}"
+          color="{{selected === index ? '#2E6B4F' : '#93A099'}}"
+        />
+      </view>
+      <view class="tabbar__label {{selected === index ? 'is-on' : ''}}">{{item.text}}</view>
+    </view>
+  </view>
+  <view class="tabbar__safe"></view>
+</view>

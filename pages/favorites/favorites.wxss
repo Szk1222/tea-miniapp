@@ -1,0 +1,72 @@
+.seg {
+  display: flex;
+  flex-direction: row;
+  gap: 8rpx;
+  margin: 24rpx 32rpx 8rpx;
+  padding: 8rpx;
+  border-radius: 999rpx;
+  background: #EBEFEB;
+}
+
+.seg__item {
+  flex: 1;
+  height: 76rpx;
+  border-radius: 999rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  font-size: 27rpx;
+  color: #6E7C73;
+  transition: all 0.18s ease;
+}
+
+.seg__item.is-on {
+  background: #FFFFFF;
+  color: #1F4A36;
+  font-weight: 600;
+  box-shadow: 0 4rpx 12rpx rgba(28, 56, 41, 0.07);
+}
+
+.seg__badge {
+  font-size: 21rpx;
+  color: #93A099;
+}
+
+.seg__item.is-on .seg__badge {
+  color: #2E6B4F;
+}
+
+.tea-list__item {
+  margin-bottom: 20rpx;
+}
+
+.bar-note {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 26rpx 4rpx 18rpx;
+  font-size: 23rpx;
+  color: #93A099;
+}
+
+.bar-note__action {
+  color: #2E6B4F;
+}
+
+.empty-sub {
+  margin-top: 12rpx;
+  font-size: 25rpx;
+  color: #A3AEA7;
+  text-align: center;
+  padding: 0 60rpx;
+  line-height: 1.6;
+}
+
+.empty-btn {
+  margin-top: 36rpx;
+  gap: 12rpx;
+  padding: 0 48rpx;
+}

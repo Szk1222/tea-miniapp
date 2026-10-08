@@ -1,0 +1,41 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/chat/chat",
+    "pages/tea/tea",
+    "pages/profile/profile",
+    "pages/assess/assess",
+    "pages/result/result",
+    "pages/tea-detail/tea-detail",
+    "pages/favorites/favorites",
+    "pages/knowledge/knowledge",
+    "pages/knowledge-detail/knowledge-detail",
+    "pages/settings/settings"
+  ],
+  "window": {
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#F5F7F4",
+    "navigationBarTitleText": "茶历方 · 养生茶",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F5F7F4",
+    "navigationStyle": "default"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#93A099",
+    "selectedColor": "#2E6B4F",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "首页" },
+      { "pagePath": "pages/chat/chat", "text": "问茶" },
+      { "pagePath": "pages/tea/tea", "text": "茶方" },
+      { "pagePath": "pages/profile/profile", "text": "我的" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "permission": {},
+  "requiredPrivateInfos": []
+}

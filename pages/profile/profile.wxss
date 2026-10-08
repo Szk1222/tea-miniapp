@@ -1,0 +1,176 @@
+/* ---------------- 档案头卡 ---------------- */
+.pcard {
+  margin-top: 28rpx;
+  padding: 34rpx 32rpx 0;
+  border-radius: 32rpx;
+  background: linear-gradient(150deg, #FFFFFF 0%, #F1F7F3 100%);
+  border: 1rpx solid #E1EDE6;
+  box-shadow: 0 10rpx 30rpx rgba(46, 107, 79, 0.07);
+  overflow: hidden;
+}
+
+.pcard--empty {
+  padding-bottom: 34rpx;
+}
+
+.pcard__row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 22rpx;
+}
+
+.pcard__avatar {
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.pcard__avatar--empty {
+  background: #E6EEEA;
+}
+
+.pcard__name {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #17251D;
+  letter-spacing: 1rpx;
+}
+
+.pcard__meta {
+  margin-top: 8rpx;
+  font-size: 23rpx;
+  color: #7C8A80;
+}
+
+.pcard__btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+  padding: 12rpx 20rpx;
+  border-radius: 999rpx;
+  background: #E8F1EC;
+  color: #2E6B4F;
+  font-size: 23rpx;
+  flex: 0 0 auto;
+}
+
+.pcard__btn:active {
+  background: #DCEAE2;
+}
+
+.pcard__cta {
+  margin-top: 30rpx;
+  gap: 12rpx;
+}
+
+.pcard__stats {
+  margin-top: 32rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border-top: 1rpx solid #E5EFE9;
+  padding: 26rpx 0 28rpx;
+}
+
+.pcard__stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pcard__stat:active {
+  opacity: 0.6;
+}
+
+.pcard__num {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #1F4A36;
+  line-height: 1.2;
+}
+
+.pcard__label {
+  margin-top: 6rpx;
+  font-size: 21rpx;
+  color: #8B9A90;
+}
+
+.pcard__vline {
+  width: 1rpx;
+  height: 46rpx;
+  background: #E5EFE9;
+}
+
+/* ---------------- 列表行 ---------------- */
+.cell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 18rpx;
+  padding: 24rpx 0;
+  min-height: 104rpx;
+}
+
+.cell__icon {
+  width: 66rpx;
+  height: 66rpx;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.cell__icon--green { background: #E8F1EC; }
+.cell__icon--gold { background: #FAF2E4; }
+.cell__icon--blue { background: #EAF0F6; }
+.cell__icon--plain { background: #F2F5F2; }
+
+.cell__title {
+  font-size: 29rpx;
+  color: #24352C;
+}
+
+/* ---------------- 说明 ---------------- */
+.privacy {
+  margin-top: 36rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: #F1F4F1;
+}
+
+.privacy__text {
+  flex: 1;
+  font-size: 22rpx;
+  color: #8B978F;
+  line-height: 1.72;
+}
+
+.disclaimer {
+  margin-top: 22rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: #F1F4F1;
+}
+
+.disclaimer__text {
+  flex: 1;
+  font-size: 22rpx;
+  color: #8B978F;
+  line-height: 1.72;
+}

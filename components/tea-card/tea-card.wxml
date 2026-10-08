@@ -1,0 +1,18 @@
+<view class="tc tc--{{variant}}" bindtap="onTap" hover-class="tc--hover" hover-stay-time="60">
+  <view class="tc__thumb tc__thumb--{{tea.tone}}">
+    <icon name="tea" size="{{variant === 'grid' ? 64 : 52}}" color="#FFFFFF" weight="1.5" />
+    <view class="tc__nature">{{tea.nature}}</view>
+  </view>
+  <view class="tc__body">
+    <view class="tc__head">
+      <text class="tc__name">{{tea.name}}</text>
+      <icon wx:if="{{favorite}}" name="bookmark" size="28" color="#B9873A" filled="{{true}}" />
+    </view>
+    <view class="tc__sub">{{tea.subtitle}}</view>
+    <view class="tc__tags" wx:if="{{showChips}}">
+      <view wx:if="{{showConstitution && constitutionName}}" class="tc__chip tc__chip--brand">{{constitutionName}}</view>
+      <view wx:for="{{tea.tags}}" wx:key="*this" class="tc__chip">{{item}}</view>
+    </view>
+  </view>
+  <icon wx:if="{{variant !== 'grid'}}" name="chevronRight" size="30" color="#C6CFC9" />
+</view>

@@ -1,0 +1,181 @@
+<view class="page">
+
+  <!-- 品牌主视觉 -->
+  <view class="hero">
+    <view class="hero__glow"></view>
+    <view class="hero__row">
+      <view class="hero__brand">
+        <view class="hero__logo">
+          <icon name="leaf" size="{{42}}" color="#FFFFFF" weight="{{1.6}}" />
+        </view>
+        <view class="hero__brand-text">
+          <view class="hero__name">茶历方</view>
+          <view class="hero__slogan">辨证施茶 · 一人一方</view>
+        </view>
+      </view>
+      <view class="hero__season">{{seasonName}}</view>
+    </view>
+
+    <view class="hero__title">{{greet}}，今天想喝点什么？</view>
+    <view class="hero__desc">依据九种中医体质，从药食同源食材中为你匹配当季适合的日常茶饮。</view>
+
+    <view class="hero__actions">
+      <view class="hero__btn hero__btn--solid" bindtap="goAssess">
+        <icon name="clipboard" size="{{34}}" color="#2E6B4F" weight="{{1.8}}" />
+        <text>开始体质测评</text>
+      </view>
+      <view class="hero__btn hero__btn--outline" bindtap="goChat">
+        <icon name="chat" size="{{34}}" color="#FFFFFF" weight="{{1.8}}" />
+        <text>问茶顾问</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="container">
+
+    <!-- 体质档案 -->
+    <view wx:if="{{profile}}" class="profile-card" bindtap="goResult">
+      <view class="profile-card__left">
+        <view class="profile-card__label">我的体质档案</view>
+        <view class="profile-card__name">
+          <text class="profile-card__cn">{{mainConstitution.name}}</text>
+          <text class="profile-card__short">{{mainConstitution.short}}</text>
+        </view>
+        <view class="profile-card__meta">{{profile.levelText}} · {{dateText}} 更新</view>
+      </view>
+      <view class="profile-card__right">
+        <icon name="{{mainConstitution.icon}}" size="{{64}}" color="{{mainConstitution.color}}" weight="{{1.5}}" />
+        <view class="profile-card__more">
+          <text>查看档案</text>
+          <icon name="chevronRight" size="{{24}}" color="#93A099" />
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="intro-card" bindtap="goAssess">
+      <view class="intro-card__icon">
+        <icon name="sparkle" size="{{40}}" color="#B9873A" weight="{{1.6}}" />
+      </view>
+      <view class="flex-1">
+        <view class="intro-card__title">还没有你的体质档案</view>
+        <view class="intro-card__desc">10 道选择题，约 90 秒，生成专属茶饮方向</view>
+      </view>
+      <icon name="chevronRight" size="{{30}}" color="#C6CFC9" />
+    </view>
+
+    <!-- 快捷入口 -->
+    <view class="quick">
+      <view class="quick__item" bindtap="goAssess">
+        <view class="quick__icon quick__icon--green">
+          <icon name="clipboard" size="{{40}}" color="#2E6B4F" weight="{{1.7}}" />
+        </view>
+        <view class="quick__text">体质测评</view>
+      </view>
+      <view class="quick__item" bindtap="goChat">
+        <view class="quick__icon quick__icon--gold">
+          <icon name="chat" size="{{40}}" color="#B9873A" weight="{{1.7}}" />
+        </view>
+        <view class="quick__text">问茶顾问</view>
+      </view>
+      <view class="quick__item" bindtap="goTea">
+        <view class="quick__icon quick__icon--blue">
+          <icon name="tea" size="{{40}}" color="#4E7EA8" weight="{{1.7}}" />
+        </view>
+        <view class="quick__text">茶方库</view>
+      </view>
+      <view class="quick__item" bindtap="goFavorites">
+        <view class="quick__icon quick__icon--rose">
+          <icon name="bookmark" size="{{40}}" color="#B4738F" weight="{{1.7}}" />
+        </view>
+        <view class="quick__text">我的收藏</view>
+      </view>
+    </view>
+
+    <!-- 当季推荐 -->
+    <view class="section-head">
+      <view class="section-title">{{seasonName}}推荐</view>
+      <view class="section-more" bindtap="goTea">
+        <text>全部茶方</text>
+        <icon name="chevronRight" size="{{24}}" color="#93A099" />
+      </view>
+    </view>
+    <view class="season-tip">
+      <icon name="{{season === '春' ? 'leaf' : season === '夏' ? 'sun' : season === '秋' ? 'wind' : 'snow'}}" size="{{30}}" color="#8A6524" weight="{{1.7}}" />
+      <text class="season-tip__text">{{seasonTip}}</text>
+    </view>
+    <scroll-view class="season-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+      <view class="season-list">
+        <view class="season-item" wx:for="{{seasonal}}" wx:key="id">
+          <tea-card tea="{{item}}" variant="grid" bind:select="openTea" />
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 九种体质 -->
+    <view class="section-head">
+      <view class="section-title">九种体质</view>
+      <view class="section-more" bindtap="goKnowledge">
+        <text>体质科普</text>
+        <icon name="chevronRight" size="{{24}}" color="#93A099" />
+      </view>
+    </view>
+    <view class="const-grid">
+      <view
+        class="const-item"
+        wx:for="{{constitutions}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="goConstitutionList"
+        hover-class="const-item--hover"
+        hover-stay-time="60"
+      >
+        <view class="const-item__icon" style="background:{{item.soft}}">
+          <icon name="{{item.icon}}" size="{{38}}" color="{{item.color}}" weight="{{1.7}}" />
+        </view>
+        <view class="const-item__body">
+          <view class="const-item__name">{{item.name}}</view>
+          <view class="const-item__short">{{item.short}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 知识库 -->
+    <view class="section-head">
+      <view class="section-title">养生知识</view>
+      <view class="section-more" bindtap="goKnowledge">
+        <text>更多</text>
+        <icon name="chevronRight" size="{{24}}" color="#93A099" />
+      </view>
+    </view>
+    <view class="know-card" bindtap="goKnowledge">
+      <view class="know-card__row">
+        <view class="know-card__icon">
+          <icon name="book" size="{{40}}" color="#2E6B4F" weight="{{1.6}}" />
+        </view>
+        <view class="flex-1">
+          <view class="know-card__title">药食同源食材科普</view>
+          <view class="know-card__desc">黄芪、陈皮、玫瑰、麦冬……常见食材的性味与用法</view>
+        </view>
+      </view>
+      <view class="divider"></view>
+      <view class="know-card__row">
+        <view class="know-card__icon know-card__icon--gold">
+          <icon name="help" size="{{40}}" color="#B9873A" weight="{{1.6}}" />
+        </view>
+        <view class="flex-1">
+          <view class="know-card__title">茶饮常识问答</view>
+          <view class="know-card__desc">什么时候喝、能不能天天喝、经期要避开什么</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 免责声明 -->
+    <view class="disclaimer">
+      <icon name="info" size="{{28}}" color="#98A69C" weight="{{1.7}}" />
+      <text class="disclaimer__text">本小程序仅提供日常养生茶饮参考，所有内容不构成医疗建议，不替代专业医疗诊断与治疗。如有身体不适，请前往正规医疗机构就诊。</text>
+    </view>
+
+  </view>
+
+  <view class="tabbar-gap"></view>
+</view>
