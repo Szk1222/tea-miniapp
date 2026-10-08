@@ -169,6 +169,12 @@
 - 详细说明见 `docs/github-actions-deploy.md`
 - **已实测跑通**（2026-10-08，run #37762801471，push 触发，全程约 1 分钟）：
   verify 14s ✅ / image 47s ✅（产出 `latest` + `master` + `sha-<短哈希>`）/ miniprogram 按设计 skipped
+- **小程序上传亦已跑通**（同日 run #37765001146，手动触发）：
+  miniprogram ✅ **79s**（`还原上传密钥` → `安装 miniprogram-ci` → `上传体验版`）。
+  上传成功只是产出**开发版本**，还需到公众平台「版本管理」手动设为体验版才能拿到二维码
+- **包体泄漏已实证**：从上传作业日志解析出实际打包清单共 **59 个文件**
+  （`pages 33 / utils 9 / components 6 / data 5 / custom-tab-bar 3 / app.js / app.wxss`），
+  `server/`、`docs/`、`preview/`、`.github/`、`.workbuddy/`、`.env`、`*.md`、`*.key` **均未进包**
 - **无 `gh` CLI 时用 REST API 反查运行态**（PAT 需 `Actions: read`）：
   `GET /repos/{o}/{r}/actions/runs` → run id →
   `GET .../runs/{id}/jobs` → job id + 每步 conclusion →
@@ -262,6 +268,17 @@
     - `/tmp` 在 Git Bash 与 Node 里**不是同一个目录**：bash 当 Unix 路径，
       node 的 `require('/tmp/x.json')` 按当前盘符解析成 `D:\tmp\x.json` → `MODULE_NOT_FOUND`。
       跨工具传文件一律用系统临时目录的**绝对 Windows 路径**
+18. **「期望为 0」的检查必须配阳性对照，否则 0 与「模式根本没匹配上」无法区分**：
+    本轮用 `^\[[0-9]+\] …` 解析 Actions 日志里的打包清单，**连续两次得到 0 条**，
+    差点据此报告「包内无敏感文件」。真实行格式是
+    `2026-10-08T10:41:47.0821435Z␣␣␣[144] pages/result/result.js` ——
+    `Z` 后面是**三个空格**，而我的模式只留了一个，整条正则空转。
+    修法：先跑「必然命中」的探针（本次 `pages/` 应命中 132 次、`[N]` 行应命中 247 次），
+    **对照通过后那些 0 才有意义** —— 让证据自己可证伪，而不是靠「我觉得应该没错」
+19. **GitHub 日志脱敏会吃掉自己的诊断信息**：`decode-key.js` 打印的 `PEM 标签` 显示为 `***` ——
+    因为该串是 Secret 的子串，GitHub 把任何**日志中出现的 Secret 片段**一并打码。
+    这反而说明 Secret 已送达。**设计诊断输出时别依赖「回显 Secret 的一部分」**，
+    要依赖**派生值**（sha256、长度、结构标签的布尔判断）
 
 ## 服务端 · 第三轮：接豆包（火山方舟）
 - 已接真实豆包并端到端联调通过：端点 `https://ark.cn-beijing.volces.com/api/v3`，模型 `doubao-seed-2-1-lite-260915`（账号已开通）
