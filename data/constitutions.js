@@ -142,9 +142,57 @@ const CONSTITUTIONS = [
 ];
 
 const MAP = {};
-CONSTITUTIONS.forEach(function (c) {
-  MAP[c.id] = c;
-});
+const IDS = [];
+
+function rebuildMap() {
+  Object.keys(MAP).forEach(function (k) { delete MAP[k]; });
+  CONSTITUTIONS.forEach(function (c) { MAP[c.id] = c; });
+}
+function rebuildIds() {
+  IDS.length = 0;
+  CONSTITUTIONS.forEach(function (c) { IDS.push(c.id); });
+}
+rebuildMap();
+rebuildIds();
+
+/**
+ * 内容覆盖：就地改写 CONSTITUTIONS / MAP / IDS，全部保持引用不变 ——
+ * 服务端工具枚举与规则引擎评分都持有 ids 的引用，换成新数组它们会读到旧值。
+ * @param {Array} next 体质数组；非法或为空时保持原样
+ * @returns {number} 覆盖后的条数
+ */
+function applyOverride(next) {
+  if (!Array.isArray(next) || !next.length) return CONSTITUTIONS.length;
+  CONSTITUTIONS.length = 0;
+  Array.prototype.push.apply(CONSTITUTIONS, next);
+  rebuildMap();
+  rebuildIds();
+  return CONSTITUTIONS.length;
+}
+
+/**
+ * 兜底占位体质。
+ *
+ * 为什么需要：内容可被管理后台远程修改，而用户的体质档案存在本机。
+ * 管理员删掉一个体质后，历史档案里的 constitutionId 就成了悬空引用 ——
+ * 展示路径上直接 constitutions.get(id).name 会抛异常、整页白屏。
+ * 所以展示类调用一律走 getOr()，只有「校验 id 是否合法」的场景才用 get()。
+ */
+const FALLBACK = {
+  id: '',
+  name: '未知体质',
+  short: '',
+  icon: 'leaf',
+  color: '#93A099',
+  soft: '#F1EFE8',
+  brief: '这份体质档案对应的体质已从内容库中移除，建议重新做一次测评。',
+  features: [],
+  causes: '',
+  principle: '',
+  teaAdvice: '',
+  life: [],
+  keywords: []
+};
 
 module.exports = {
   list: CONSTITUTIONS,
@@ -152,5 +200,10 @@ module.exports = {
   get: function (id) {
     return MAP[id] || null;
   },
-  ids: CONSTITUTIONS.map(function (c) { return c.id; })
+  /** 展示用取值：未知 id 返回占位对象，绝不返回 null */
+  getOr: function (id) {
+    return MAP[id] || Object.assign({}, FALLBACK, { id: id || '' });
+  },
+  ids: IDS,
+  applyOverride: applyOverride
 };

@@ -511,12 +511,34 @@ const TEAS = [
 ];
 
 const MAP = {};
-TEAS.forEach(function (t) {
-  MAP[t.id] = t;
-});
+
+function rebuildMap() {
+  Object.keys(MAP).forEach(function (k) { delete MAP[k]; });
+  TEAS.forEach(function (t) { MAP[t.id] = t; });
+}
+rebuildMap();
 
 function byConstitution(cid) {
   return TEAS.filter(function (t) { return t.constitution === cid; });
+}
+
+/**
+ * 内容覆盖：用管理后台下发的茶方库替换内置数据。
+ *
+ * 必须「就地改写」TEAS 与 MAP，不能换成新数组/新对象 ——
+ * 页面与服务端到处持有 teas.list、teas.map 的引用（如 teas.map[id]），
+ * 一旦替换引用，它们会永远读到旧数据。
+ *
+ * @param {Array} next 茶方数组；非法或为空时保持原样
+ * @returns {number} 覆盖后的条数
+ */
+function applyOverride(next) {
+  if (!Array.isArray(next) || !next.length) return TEAS.length;
+  TEAS.length = 0;
+  Array.prototype.push.apply(TEAS, next);
+  rebuildMap();
+  module.exports.total = TEAS.length;
+  return TEAS.length;
 }
 
 module.exports = {
@@ -524,5 +546,6 @@ module.exports = {
   map: MAP,
   get: function (id) { return MAP[id] || null; },
   byConstitution: byConstitution,
-  total: TEAS.length
+  total: TEAS.length,
+  applyOverride: applyOverride
 };

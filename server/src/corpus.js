@@ -40,7 +40,7 @@ function buildDocs() {
   });
 
   TEAS.list.forEach(function (t) {
-    const owner = CONSTITUTIONS.get(t.constitution);
+    const owner = CONSTITUTIONS.getOr(t.constitution);
     const ing = t.ingredients.map(function (i) {
       return i.name + ' ' + i.amount + '（' + i.role + '）';
     }).join('、');

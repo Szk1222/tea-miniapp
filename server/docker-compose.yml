@@ -1,4 +1,9 @@
 # 在项目根目录执行：docker compose -f server/docker-compose.yml up -d
+#
+# ⚠️ 必须单实例部署，不要用 --scale 扩容。
+#    内容库与内容热更新都是「进程内 + 本地磁盘」，多实例会各读各的，
+#    表现为「后台改完内容，一部分用户的请求仍然返回旧内容」且难以排查。
+#    要真正扩容，先改成共享存储 + 内容变更广播刷新（见 README「多实例注意事项」）。
 services:
   agent:
     build:
@@ -15,11 +20,22 @@ services:
       PORT: "8787"
       HOST: 0.0.0.0
       LOG_LEVEL: info
-    # 向量索引缓存挂出来，容器重启不用重新调 embedding 接口
+    # 用具名卷而不是绑定挂载：容器以非 root（uid 1000）运行，
+    # 绑定挂载 ./storage 时宿主机目录属主通常不是 1000，会导致后台发布内容报「写盘失败」。
+    # 具名卷由 Docker 管理属主，免去 chown。
+    # 若确实需要直接查看/备份宿主目录，换回绑定挂载并先执行：
+    #   mkdir -p server/storage && sudo chown -R 1000:1000 server/storage
     volumes:
-      - ./cache:/app/server/.cache
+      # 向量索引缓存：容器重启不用重新调 embedding 接口
+      - chalifang-cache:/app/server/.cache
+      # 内容库与审计日志：不挂出来的话，后台改的内容重启就没了
+      - chalifang-storage:/app/server/storage
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  chalifang-cache:
+  chalifang-storage:

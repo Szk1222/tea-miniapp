@@ -24,7 +24,7 @@ Page({
     const profile = store.getProfile();
     this.setData({
       profile: profile && profile.constitutionId ? profile : null,
-      c: profile && profile.constitutionId ? constitutions.get(profile.constitutionId) : null,
+      c: profile && profile.constitutionId ? constitutions.getOr(profile.constitutionId) : null,
       favCount: store.getFavorites().length,
       historyCount: store.getHistory().length,
       consult: store.getConsult()

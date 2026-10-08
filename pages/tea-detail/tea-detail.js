@@ -29,7 +29,7 @@ Page({
       }, 900);
       return;
     }
-    const c = constitutions.get(tea.constitution);
+    const c = constitutions.getOr(tea.constitution);
     const season = engine.seasonOf();
     const related = engine.recommend(tea.constitution, { season: season, limit: 3 })
       .filter(function (t) { return t.id !== tea.id; })

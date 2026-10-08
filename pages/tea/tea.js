@@ -32,7 +32,7 @@ Page({
     const myId = profile && profile.constitutionId ? profile.constitutionId : '';
     const patch = {
       myId: myId,
-      myName: myId ? constitutions.get(myId).name : ''
+      myName: myId ? constitutions.getOr(myId).name : ''
     };
     if (pending) {
       wx.removeStorageSync('tl_tea_filter');
@@ -70,7 +70,7 @@ Page({
       list = list.filter(function (t) { return ids.indexOf(t.id) > -1; });
     }
     const withMeta = list.map(function (t) {
-      const c = constitutions.get(t.constitution);
+      const c = constitutions.getOr(t.constitution);
       return Object.assign({}, t, {
         constitutionName: c.name,
         constitutionColor: c.color

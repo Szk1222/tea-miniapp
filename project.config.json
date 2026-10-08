@@ -5,6 +5,22 @@
       {
         "value": "preview",
         "type": "folder"
+      },
+      {
+        "value": "server",
+        "type": "folder"
+      },
+      {
+        "value": "docs",
+        "type": "folder"
+      },
+      {
+        "value": ".workbuddy",
+        "type": "folder"
+      },
+      {
+        "value": ".md",
+        "type": "suffix"
       }
     ],
     "include": []

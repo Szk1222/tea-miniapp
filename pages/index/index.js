@@ -72,7 +72,7 @@ Page({
     const profile = store.getProfile();
     let mainConstitution = null;
     if (profile && profile.constitutionId) {
-      mainConstitution = constitutions.get(profile.constitutionId);
+      mainConstitution = constitutions.getOr(profile.constitutionId);
     }
     this.setData({
       profile: profile && profile.constitutionId ? profile : null,

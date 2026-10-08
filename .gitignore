@@ -7,6 +7,9 @@ server/.env
 # 构建缓存（向量索引等）
 server/.cache/
 
+# 内容库与审计日志：运行时数据，由后台写入，不进仓库
+server/storage/
+
 # 开发者工具本地个人配置（导入项目时自动生成，含本机偏好，不建议提交）
 project.private.config.json
 

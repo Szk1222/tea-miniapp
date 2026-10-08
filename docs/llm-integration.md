@@ -78,11 +78,22 @@ node --env-file=server/.env server/scripts/check-llm.js
 
 ### 3. 端上指向服务
 
-`utils/config.js`：
+`utils/config.js` 里按环境分三个常量，不要再去改 `API_BASE` 本身（它由 `pickApiBase()` 自动选择）：
 
 ```js
-API_BASE: 'https://your-domain.com',   // 必须是 HTTPS，且已加入小程序 request 合法域名
+const API_BASE_DEVTOOLS = 'http://127.0.0.1:8787';        // 开发者工具
+const API_BASE_LAN      = 'http://192.168.31.37:8787';    // 体验版真机联调（开发机局域网 IP）
+const API_BASE_PROD     = 'https://your-domain.com';      // 正式版：必须 HTTPS + 已备案
 ```
+
+正式域名的两个硬要求：**已加入小程序 request 合法域名**、**已在工信部备案**（且不能带非标准端口）。
+
+### 3.1 上行字段
+
+端上只上传 `{ constitutionId, secondaryId, percent, levelText, risk }`，
+其中 `risk` 是 `{ stage, chronic, allergy }` 三个布尔标记 —— 性别、年龄、慢性病名称、过敏史
+等原始填报值**不出端**（服务端还有一道兜底，见 `server/README.md` 的「隐私」章节）。
+改这里的字段时，请同步跑 `node server/scripts/smoke-security.js`。
 
 ### 4. 验证
 

@@ -19,6 +19,37 @@ function emptyCtx(ctx) {
 }
 
 /**
+ * 上行的「最小化档案」。
+ *
+ * 为什么不能整份传：用户的性别、年龄段、孕期/哺乳期、慢性病、过敏史属于
+ * 《个人信息保护法》定义的**敏感个人信息**，向服务端与第三方大模型传输需要单独同意。
+ *
+ * 但也不能一删了之 —— 服务端要靠这些信号决定「是否必须先做风险提示、是否不给具体配方」，
+ * 删干净会把合规安全网一起删掉。所以这里做的是**用途最小化**：
+ * 只上传「下游决策真正需要的那一位信息」，即由原始值降维得到的布尔风险标记，
+ * 不上传原始值本身（例如只说「处于需要特别提示的生理阶段」，不说具体是孕期还是哺乳期）。
+ */
+function minimalProfile(p) {
+  if (!p || !p.constitutionId) return null;
+
+  const out = { constitutionId: p.constitutionId };
+  if (p.secondaryId) out.secondaryId = p.secondaryId;
+  if (typeof p.percent === 'number') out.percent = p.percent;
+  if (p.levelText) out.levelText = p.levelText;
+
+  const b = p.basic || {};
+  const risk = {};
+  if (b.stage && b.stage !== '无') risk.stage = true;
+  if (b.conditions && b.conditions.filter(function (x) { return x && x !== '以上都没有'; }).length) {
+    risk.chronic = true;
+  }
+  if (b.allergy) risk.allergy = true;
+  if (Object.keys(risk).length) out.risk = risk;
+
+  return out;
+}
+
+/**
  * @param {string} input
  * @param {object} ctx  { profile, lastTeas, flags }
  * @param {object} handlers
@@ -46,6 +77,8 @@ function respondAsync(input, ctx, handlers) {
   if (agent.hitMedical(text)) return local('local-safety');
 
   // 2/3. 是否可用服务端
+  //     getAiEnabled() 内已强制校验「用户是否单独同意过」，未同意时永远是 false，
+  //     这里不需要重复判断，但请求体必须用最小化档案（见 minimalProfile）。
   if (!store.getAiEnabled()) return local('disabled');
   if (!llm.isAvailable()) return local('circuit-open');
 
@@ -54,7 +87,7 @@ function respondAsync(input, ctx, handlers) {
   const task = llm.chat({
     sessionId: store.getSessionId(),
     message: text,
-    profile: state.profile,
+    profile: minimalProfile(state.profile),
     context: { lastTeas: state.lastTeas, flags: state.flags },
     onMeta: function (m) { h.onMeta && h.onMeta(m); },
     onDelta: function (d) {
@@ -99,5 +132,6 @@ function respondAsync(input, ctx, handlers) {
 }
 
 module.exports = {
-  respondAsync: respondAsync
+  respondAsync: respondAsync,
+  _minimalProfile: minimalProfile
 };

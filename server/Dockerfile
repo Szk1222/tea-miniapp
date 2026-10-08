@@ -13,8 +13,14 @@ WORKDIR /app
 COPY server/package.json ./server/package.json
 COPY server/src ./server/src
 COPY server/scripts ./server/scripts
+# 管理后台页面（/admin）
+COPY server/public ./server/public
 COPY data ./data
 COPY utils ./utils
+
+# 内容库与审计日志目录。绑定挂载时宿主机目录权限要能被 uid 1000 写入，
+# 否则请先在宿主机执行：mkdir -p server/storage && chown -R 1000:1000 server/storage
+RUN mkdir -p /app/server/storage /app/server/.cache && chown -R node:node /app/server
 
 ENV NODE_ENV=production \
     PORT=8787 \

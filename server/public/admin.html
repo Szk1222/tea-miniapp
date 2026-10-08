@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>茶历方 · 内容管理后台</title>
+<style>
+:root{
+  --brand:#2E6B4F; --brand-d:#21503A; --brand-s:#E8F1EC;
+  --gold:#B9873A; --gold-s:#FBF3E6;
+  --bg:#F5F7F4; --card:#FFFFFF; --line:#E9EDE8;
+  --t1:#17251D; --t2:#5A6A61; --t3:#93A099;
+  --red:#A32D2D; --red-s:#FCEBEB; --amber:#854F0B; --amber-s:#FAEEDA;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--t1);
+  font:14px/1.6 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);
+  background:var(--card);color:var(--t1);padding:6px 12px}
+button:hover{border-color:var(--brand)}
+button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+button.primary:hover{background:var(--brand-d)}
+button.ghost{background:transparent}
+button.danger{color:var(--red);border-color:#F0C9C9}
+button:disabled{opacity:.5;cursor:not-allowed}
+input,select,textarea{font:inherit;width:100%;padding:6px 8px;border:1px solid var(--line);
+  border-radius:8px;background:#fff;color:var(--t1)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--brand-s);border-color:var(--brand)}
+textarea{min-height:64px;resize:vertical}
+code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(--brand-s);
+  padding:1px 5px;border-radius:4px}
+#gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);z-index:20}
+#gate .box{width:360px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px}
+#gate h1{font-size:17px;margin:0 0 4px}
+#gate p{color:var(--t2);font-size:13px;margin:0 0 16px}
+header{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--card);
+  border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10;flex-wrap:wrap}
+header .name{font-weight:600}
+header .spacer{flex:1}
+.badge{font-size:12px;color:var(--brand-d);background:var(--brand-s);border-radius:999px;padding:2px 10px;white-space:nowrap}
+.badge.warn{color:var(--amber);background:var(--amber-s)}
+.badge.err{color:var(--red);background:var(--red-s)}
+main{display:grid;grid-template-columns:168px minmax(220px,300px) 1fr;gap:16px;
+  padding:16px 20px;align-items:start;min-height:calc(100vh - 57px)}
+/* 概览/记录类页面没有条目列表，收起中间栏，避免出现一列空白 */
+main.compact{grid-template-columns:168px 1fr}
+main.compact #list{display:none}
+nav,#list,#editor{background:var(--card);border:1px solid var(--line);border-radius:var(--radius)}
+nav{padding:8px;position:sticky;top:73px}
+nav a{display:block;padding:8px 10px;border-radius:8px;color:var(--t2);text-decoration:none;font-size:13px}
+nav a:hover{background:var(--brand-s);color:var(--brand-d)}
+nav a.on{background:var(--brand);color:#fff}
+nav .sep{height:1px;background:var(--line);margin:8px 4px}
+nav .grp{font-size:11px;color:var(--t3);padding:6px 10px 2px}
+#list{padding:10px;max-height:calc(100vh - 90px);overflow:auto;position:sticky;top:73px}
+#list .tool{display:flex;gap:6px;margin-bottom:8px}
+#list .tool input{flex:1;min-width:0}
+#list .tool button{flex:0 0 auto;white-space:nowrap}
+#list .item{padding:8px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+#list .item:hover{background:var(--brand-s)}
+#list .item.on{background:var(--brand-s);border-color:var(--brand)}
+#list .item b{display:block;font-weight:500;font-size:13px}
+#list .item span{font-size:12px;color:var(--t3)}
+#editor{padding:16px 18px;min-height:280px}
+#editor h2{font-size:15px;margin:0 0 2px}
+#editor .desc{color:var(--t2);font-size:12px;margin:0 0 14px}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.f{margin-bottom:12px}
+.f>label{display:block;font-size:12px;color:var(--t2);margin-bottom:4px}
+.f .hint{font-size:11px;color:var(--t3);margin-top:3px}
+.f.bad>input,.f.bad>select,.f.bad>textarea{border-color:var(--red);background:var(--red-s)}
+.f .msg{font-size:12px;color:var(--red);margin-top:3px}
+.f .msg.warn{color:var(--amber)}
+.nest{border:1px dashed var(--line);border-radius:10px;padding:10px;background:#FCFDFC}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:#FCFDFC}
+.card .hd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.card .hd b{font-size:13px;font-weight:500;flex:1}
+.row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.row input,.row select{flex:1}
+.row .idx{font-size:11px;color:var(--t3);width:18px;text-align:right;flex:0 0 18px}
+.note{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px;
+  font-size:12px;background:var(--brand-s);color:var(--brand-d)}
+.note.err{background:var(--red-s);color:var(--red);border-color:#F0C9C9}
+.note.warn{background:var(--amber-s);color:var(--amber);border-color:#EBD9AE}
+.note ul{margin:6px 0 0;padding-left:18px}
+.note li{margin:2px 0}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--t2);font-weight:500}
+.kv{display:grid;grid-template-columns:112px 1fr;gap:6px 12px;font-size:13px}
+.kv div:nth-child(odd){color:var(--t2)}
+.empty{color:var(--t3);font-size:13px;padding:20px 0;text-align:center}
+@media(max-width:900px){main{grid-template-columns:1fr}nav,#list{position:static;max-height:none}}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <h1>茶历方 · 内容管理后台</h1>
+    <p>请输入 ADMIN_TOKEN（配置在服务端 server/.env）</p>
+    <div class="f"><input id="tok" type="password" placeholder="ADMIN_TOKEN" autocomplete="off"></div>
+    <div id="gateMsg" class="f"></div>
+    <button class="primary" id="loginBtn" style="width:100%">登录</button>
+  </div>
+</div>
+
+<header>
+  <span class="name">茶历方 · 内容管理后台</span>
+  <span class="badge" id="verBadge">内容版本 —</span>
+  <span class="badge warn" id="dirtyBadge" style="display:none">有未保存改动</span>
+  <span class="spacer"></span>
+  <button class="ghost" id="refreshBtn">刷新</button>
+  <button class="ghost" id="logoutBtn">退出</button>
+</header>
+
+<main>
+  <nav id="nav"></nav>
+  <div id="list"></div>
+  <div id="editor"><div class="empty">从左侧选择要管理的内容</div></div>
+</main>
+
+<script>
+var API = '/api/admin';
+var TOKEN = localStorage.getItem('chalifang_admin_token') || '';
+var SCHEMA = null, TYPES = [], OV = null;
+var cur = { type: '', items: null, index: -1, dirty: false, errors: [], warns: [], search: '' };
+
+function esc(s) {
+  return String(s === undefined || s === null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function api(path, opts) {
+  opts = opts || {};
+  var headers = { 'Content-Type': 'application/json' };
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  return fetch(API + path, {
+    method: opts.method || 'GET',
+    headers: headers,
+    body: opts.body === undefined ? undefined : JSON.stringify(opts.body)
+  }).then(function (r) {
+    return r.json().catch(function () { return { ok: false, error: '响应不是合法 JSON' }; })
+      .then(function (d) { return { status: r.status, data: d }; });
+  });
+}
+
+/* 把 `[0].ingredients[1].name` / `list[0].options[1].scores.qixu` 拆成 key、index 序列 */
+function parsePath(p) {
+  var out = [];
+  String(p || '').replace(/\[(\d+)\]|([^.[\]]+)/g, function (m, idx, key) {
+    out.push(idx !== undefined ? Number(idx) : key);
+    return '';
+  });
+  return out;
+}
+function getByPath(root, p) {
+  return parsePath(p).reduce(function (o, k) { return o === null || o === undefined ? o : o[k]; }, root);
+}
+function setByPath(root, p, v) {
+  var ks = parsePath(p), o = root;
+  for (var i = 0; i < ks.length - 1; i++) { o = o[ks[i]]; }
+  o[ks[ks.length - 1]] = v;
+}
+/** 只用于列表项与导航：点击可能落在子元素上，需要向上找 */
+function closestAttr(el, name) {
+  while (el && el.getAttribute) {
+    var v = el.getAttribute(name);
+    if (v !== null) return v;
+    el = el.parentNode;
+  }
+  return null;
+}
+
+/* ---------------- 导航 ---------------- */
+
+var PAGES = [
+  { id: '__overview', label: '概览' },
+  { id: '__sep1' },
+  { id: '__grp_data', label: '内容数据' },
+  { id: 'teas' }, { id: 'constitutions' }, { id: 'questions' }, { id: 'knowledge' }, { id: 'catalog' },
+  { id: '__sep2' },
+  { id: '__grp_ops', label: '运营与留痕' },
+  { id: '__journal', label: '变更记录' },
+  { id: '__audit', label: '审计留痕' }
+];
+
+function renderNav() {
+  document.getElementById('nav').innerHTML = PAGES.map(function (p) {
+    if (p.id.indexOf('__sep') === 0) return '<div class="sep"></div>';
+    if (p.id.indexOf('__grp') === 0) return '<div class="grp">' + esc(p.label) + '</div>';
+    var label = p.label || (SCHEMA && SCHEMA[p.id] ? SCHEMA[p.id].label : p.id);
+    return '<a data-go="' + p.id + '"' + (cur.type === p.id ? ' class="on"' : '') + '>' + esc(label) + '</a>';
+  }).join('');
+}
+
+/* ---------------- 字段渲染 ---------------- */
+
+function msgsFor(path) {
+  var e = cur.errors.filter(function (x) { return x.path === path; })
+    .map(function (x) { return '<div class="msg">' + esc(x.message) + '</div>'; }).join('');
+  var w = cur.warns.filter(function (x) { return x.path === path; })
+    .map(function (x) { return '<div class="msg warn">' + esc(x.message) + '</div>'; }).join('');
+  return e + w;
+}
+
+function fieldWrap(field, path, inner) {
+  var bad = cur.errors.some(function (e) { return e.path === path; });
+  return '<div class="f' + (bad ? ' bad' : '') + '">'
+    + '<label>' + esc(field.label) + (field.required ? ' *' : '') + '</label>'
+    + inner
+    + (field.hint ? '<div class="hint">' + esc(field.hint) + '</div>' : '')
+    + msgsFor(path)
+    + '</div>';
+}
+
+/** 体质的可读标签（下拉里显示「阳虚质（yangxu）」而不是孤零零的 id） */
+function optLabel(field, val) {
+  var labels = (field.options && field.options.labels) || {};
+  return labels[val] ? labels[val] + '（' + val + '）' : val;
+}
+
+function renderNode(field, value, path) {
+  var t = field.type;
+
+  if (t === 'string' || t === 'number') {
+    return fieldWrap(field, path,
+      '<input type="' + (t === 'number' ? 'number' : 'text') + '" data-path="' + esc(path) + '"'
+      + (t === 'number' && field.min !== undefined ? ' min="' + field.min + '"' : '')
+      + (t === 'number' && field.max !== undefined ? ' max="' + field.max + '"' : '')
+      + ' value="' + esc(value === undefined || value === null ? '' : value) + '">');
+  }
+
+  if (t === 'text') {
+    return fieldWrap(field, path, '<textarea data-path="' + esc(path) + '">' + esc(value || '') + '</textarea>');
+  }
+
+  if (t === 'enum') {
+    var opts = (field.options && (field.options.values || field.options.list)) || [];
+    return fieldWrap(field, path,
+      '<select data-path="' + esc(path) + '"><option value="">— 请选择 —</option>'
+      + opts.map(function (o) {
+        return '<option value="' + esc(o) + '"' + (o === value ? ' selected' : '') + '>' + esc(optLabel(field, o)) + '</option>';
+      }).join('') + '</select>');
+  }
+
+  if (t === 'stringArray') {
+    var arr = Array.isArray(value) ? value : [];
+    var rows = arr.map(function (v, i) {
+      var p = path + '[' + i + ']';
+      var ctl = field.enum
+        ? '<select data-path="' + esc(p) + '">' + field.enum.map(function (o) {
+            return '<option value="' + esc(o) + '"' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>';
+          }).join('') + '</select>'
+        : '<input type="text" data-path="' + esc(p) + '" value="' + esc(v) + '">';
+      return '<div class="row"><span class="idx">' + (i + 1) + '</span>' + ctl
+        + '<button class="ghost danger" data-del="' + esc(path) + '" data-at="' + i + '">删</button></div>';
+    }).join('');
+    return fieldWrap(field, path,
+      '<div class="nest">' + (rows || '<div class="empty">暂无</div>')
+      + '<button data-add="' + esc(path) + '">+ 添加一项</button></div>');
+  }
+
+  if (t === 'numberMap') {
+    var obj = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+    var cOpts = (field.options && field.options.values) || [];
+    var mrows = Object.keys(obj).map(function (k, i) {
+      return '<div class="row"><span class="idx">' + (i + 1) + '</span>'
+        + '<select data-mapkey="' + esc(path) + '" data-old="' + esc(k) + '">'
+        + cOpts.map(function (o) {
+          return '<option value="' + esc(o) + '"' + (o === k ? ' selected' : '') + '>' + esc(optLabel(field, o)) + '</option>';
+        }).join('') + '</select>'
+        + '<input type="number" style="flex:0 0 90px" data-path="' + esc(path + '.' + k) + '" value="' + esc(obj[k]) + '">'
+        + '<button class="ghost danger" data-delkey="' + esc(path) + '" data-key="' + esc(k) + '">删</button></div>';
+    }).join('');
+    return fieldWrap(field, path,
+      '<div class="nest">' + (mrows || '<div class="empty">暂无计分</div>')
+      + '<button data-addkey="' + esc(path) + '">+ 添加体质计分</button></div>');
+  }
+
+  if (t === 'group') {
+    var inner = field.fields.map(function (f) {
+      return renderNode(f, value ? value[f.key] : undefined, path ? path + '.' + f.key : f.key);
+    }).join('');
+    return fieldWrap(field, path, '<div class="nest">' + inner + '</div>');
+  }
+
+  if (t === 'objectArray') {
+    var list = Array.isArray(value) ? value : [];
+    var cards = list.map(function (item, i) {
+      var base = path ? path + '[' + i + ']' : '[' + i + ']';
+      var title = (field.item.titleKey && item[field.item.titleKey]) || ('第 ' + (i + 1) + ' 条');
+      var sub = (field.item.subtitleKey && item[field.item.subtitleKey]) || '';
+      return '<div class="card"><div class="hd"><b>' + esc(title) + '</b>'
+        + (sub ? '<span class="badge">' + esc(sub) + '</span>' : '')
+        + '<button class="ghost danger" data-del="' + esc(path) + '" data-at="' + i + '">删除</button></div>'
+        + field.item.fields.map(function (f) { return renderNode(f, item[f.key], base + '.' + f.key); }).join('')
+        + '</div>';
+    }).join('');
+    return '<div class="f"><label>' + esc(field.label)
+      + ' <span class="badge">共 ' + list.length + ' 条</span></label>'
+      + (cards || '<div class="empty">暂无内容</div>')
+      + '<button data-add="' + esc(path) + '">+ 新增一条</button></div>';
+  }
+
+  return '<div class="f"><label>' + esc(field.label) + '</label><div class="msg">未知字段类型 ' + esc(t) + '</div></div>';
+}
+
+/** 从 schema 树里按路径找到字段描述（新增、判断类型时用） */
+function findField(path) {
+  var root = isListType()
+    ? { type: 'objectArray', item: SCHEMA[cur.type].root.item }
+    : { type: 'group', fields: SCHEMA[cur.type].root.fields };
+  var node = root, ks = parsePath(path);
+  for (var i = 0; i < ks.length; i++) {
+    if (typeof ks[i] === 'number') continue;
+    var pool = node.fields || (node.item && node.item.fields) || [];
+    var found = pool.filter(function (f) { return f.key === ks[i]; })[0];
+    if (!found) return null;
+    node = found;
+  }
+  return node;
+}
+
+function isListType() {
+  return !!(SCHEMA && SCHEMA[cur.type] && SCHEMA[cur.type].root.type === 'objectArray');
+}
+
+function blankItem(itemSchema) {
+  var o = {};
+  itemSchema.fields.forEach(function (f) {
+    if (f.type === 'string' || f.type === 'text' || f.type === 'enum') o[f.key] = '';
+    else if (f.type === 'number') o[f.key] = f.min !== undefined ? f.min : 0;
+    else if (f.type === 'stringArray') o[f.key] = [];
+    else if (f.type === 'numberMap') o[f.key] = {};
+    else if (f.type === 'group') o[f.key] = {};
+    else if (f.type === 'objectArray') o[f.key] = [];
+  });
+  return o;
+}
+
+/* ---------------- 列表与编辑器 ---------------- */
+
+function renderList() {
+  var el = document.getElementById('list');
+  if (cur.type.indexOf('__') === 0 || !isListType() || !Array.isArray(cur.items)) {
+    el.innerHTML = '<div class="empty">该类型为整体编辑，无条目列表</div>';
+    return;
+  }
+  var entry = SCHEMA[cur.type];
+  var q = cur.search.trim();
+  var rows = cur.items.map(function (it, i) { return { it: it, i: i }; }).filter(function (x) {
+    return !q || JSON.stringify(x.it).indexOf(q) > -1;
+  });
+  el.innerHTML = '<div class="tool"><input id="searchBox" type="text" placeholder="搜索…" value="' + esc(cur.search) + '">'
+    + '<button data-add="">新增</button></div>'
+    + rows.map(function (x) {
+      var t = (entry.root.item.titleKey && x.it[entry.root.item.titleKey]) || ('第 ' + (x.i + 1) + ' 条');
+      var s = (entry.root.item.subtitleKey && x.it[entry.root.item.subtitleKey]) || x.it.id || '';
+      return '<div class="item' + (x.i === cur.index ? ' on' : '') + '" data-pick="' + x.i + '">'
+        + '<b>' + esc(t) + '</b><span>' + esc(s) + '</span></div>';
+    }).join('');
+}
+
+function listBody() {
+  var entry = SCHEMA[cur.type];
+  if (isListType()) {
+    return renderNode({ type: 'objectArray', label: '内容条目', item: entry.root.item }, cur.items, '');
+  }
+  return entry.root.fields.map(function (f) {
+    return renderNode(f, cur.items ? cur.items[f.key] : undefined, f.key);
+  }).join('');
+}
+
+function renderEditor() {
+  var el = document.getElementById('editor');
+  if (cur.type === '__overview') return renderOverview(el);
+  if (cur.type === '__journal') return renderJournal(el);
+  if (cur.type === '__audit') return renderAudit(el);
+  if (!SCHEMA || !SCHEMA[cur.type]) { el.innerHTML = '<div class="empty">从左侧选择要管理的内容</div>'; return; }
+
+  var entry = SCHEMA[cur.type];
+  var head = '<h2>' + esc(entry.label) + '</h2><p class="desc">' + esc(entry.desc) + '</p>';
+  var notes = '';
+
+  if (cur.errors.length) {
+    notes += '<div class="note err">校验未通过，共 ' + cur.errors.length + ' 处问题：<ul>'
+      + cur.errors.slice(0, 12).map(function (e) {
+        return '<li><code>' + esc(e.path || '(整体)') + '</code> ' + esc(e.message) + '</li>';
+      }).join('')
+      + (cur.errors.length > 12 ? '<li>…另有 ' + (cur.errors.length - 12) + ' 处</li>' : '') + '</ul></div>';
+  }
+  if (cur.warns.length) {
+    notes += '<div class="note warn">有 ' + cur.warns.length + ' 条提示（不影响保存，建议复核）：<ul>'
+      + cur.warns.slice(0, 8).map(function (w) {
+        return '<li><code>' + esc(w.path || '(整体)') + '</code> ' + esc(w.message) + '</li>';
+      }).join('') + '</ul></div>';
+  }
+
+  if (isListType() && cur.index < 0) {
+    el.innerHTML = head + '<div class="empty">左侧选择一条进行编辑，或点「新增」创建</div>';
+    return;
+  }
+
+  el.innerHTML = head + notes
+    + '<div class="bar"><button class="primary" id="saveBtn">保存并发布</button>'
+    + '<button id="revertBtn">放弃改动</button></div>'
+    + listBody();
+}
+
+function renderOverview(el) {
+  if (!OV) { el.innerHTML = '<div class="empty">加载中…</div>'; return; }
+  var c = OV.content, i = OV.index, a = OV.audit;
+  el.innerHTML = '<h2>运行概览</h2><p class="desc">反映服务端当前真正生效的内容与运行状态</p>'
+    + '<div class="note">内容版本 <b>v' + c.version + '</b>'
+    + (c.updatedBy && c.updatedBy !== 'seed' ? '，最后由 ' + esc(c.updatedBy) + ' 修改' : '，仍是内置内容（尚无后台改动）')
+    + (c.updatedAt ? '（' + fmtTime(c.updatedAt) + '）' : '') + '</div>'
+    + '<div class="kv">'
+    + '<div>内容条数</div><div>茶方 ' + c.counts.teas + ' · 体质 ' + c.counts.constitutions + ' · 题目 ' + c.counts.questions
+    + ' · 食材 ' + c.counts.ingredients + ' · 常识 ' + c.counts.faq + ' · 目录 ' + c.counts.catalog + '</div>'
+    + '<div>检索索引</div><div>' + i.chunks + ' chunk / ' + i.vocab + ' 词项</div>'
+    + '<div>大模型</div><div>' + esc(OV.model.model)
+    + (OV.model.configured ? '（已配置）' : '（<b style="color:#A32D2D">未配置 Key，将走本地兜底</b>）') + '</div>'
+    + '<div>在线会话</div><div>' + OV.session.sessions + ' 个（TTL ' + Math.round(OV.session.ttlMs / 60000) + ' 分钟）</div>'
+    + '<div>审计日志</div><div>' + a.lines + ' 条 / ' + a.files + ' 个文件 / ' + fmtSize(a.bytes)
+    + '（保留 ' + a.retentionDays + ' 天）' + (a.writable ? '' : ' <b style="color:#A32D2D">目录不可写</b>') + '</div>'
+    + '<div>存储目录</div><div><code>' + esc(OV.storage.dir) + '</code></div>'
+    + '<div>回滚点</div><div>' + (c.hasRollback ? '可用' : '无') + '</div>'
+    + '</div>'
+    + '<div class="bar" style="margin-top:16px"><button id="rollbackBtn"' + (c.hasRollback ? '' : ' disabled') + '>回滚到上一版</button>'
+    + '<button class="ghost danger" id="reseedBtn">用内置数据重新播种</button></div>'
+    + '<div class="note warn">回滚与播种都会立即影响线上内容。播种会覆盖后台的全部编辑（仍保留一份上一版备份）。</div>';
+}
+
+function fmtTime(ms) {
+  try { return new Date(ms).toLocaleString('zh-CN'); } catch (e) { return String(ms); }
+}
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(1) + ' MB';
+}
+function clip(v) {
+  var s = typeof v === 'string' ? v : JSON.stringify(v);
+  if (!s) return '';
+  return s.length > 160 ? s.slice(0, 160) + '…' : s;
+}
+
+function renderJournal(el) {
+  el.innerHTML = '<h2>变更记录</h2><p class="desc">本进程内的内容变更流水（持久留痕见「审计留痕」）</p>'
+    + '<div id="journalBody"><div class="empty">加载中…</div></div>';
+  api('/journal?n=100').then(function (r) {
+    var box = document.getElementById('journalBody');
+    if (!box) return;
+    if (!r.data.ok) { box.innerHTML = '<div class="note err">' + esc(r.data.error || '读取失败') + '</div>'; return; }
+    if (!r.data.items.length) { box.innerHTML = '<div class="empty">还没有变更记录</div>'; return; }
+    box.innerHTML = '<table><tr><th>时间</th><th>动作</th><th>类型</th><th>操作人</th><th>版本</th><th>结果</th></tr>'
+      + r.data.items.map(function (x) {
+        var cls = x.action === 'publish' ? 'badge' : (x.action === 'reject' ? 'badge err' : 'badge warn');
+        return '<tr><td>' + esc(fmtTime(x.at)) + '</td><td>' + esc(x.action) + '</td><td>' + esc(x.type) + '</td>'
+          + '<td>' + esc(x.actor || '') + '</td><td>v' + x.version + '</td>'
+          + '<td><span class="' + cls + '">' + (x.ok ? '成功' : '拒绝') + '</span>'
+          + (x.errors && x.errors.length ? '<br>' + esc((x.errors[0] || {}).message || '') : '')
+          + (x.warnings ? '<br>' + x.warnings + ' 条提示' : '') + '</td></tr>';
+      }).join('') + '</table>';
+  });
+}
+
+function renderAudit(el) {
+  el.innerHTML = '<h2>审计留痕</h2><p class="desc">风控与工具调用记录，按天落盘、跨重启可查</p>'
+    + '<div class="bar"><select id="auditN" style="width:130px">'
+    + '<option value="50">最近 50 条</option><option value="200">最近 200 条</option><option value="500">最近 500 条</option></select>'
+    + '<button id="auditReload">刷新</button></div>'
+    + '<div id="auditBody"><div class="empty">加载中…</div></div>';
+  loadAudit();
+}
+
+function loadAudit() {
+  var sel = document.getElementById('auditN');
+  var n = sel ? sel.value : 50;
+  api('/audit?n=' + n).then(function (r) {
+    var box = document.getElementById('auditBody');
+    if (!box) return;
+    if (!r.data.ok) { box.innerHTML = '<div class="note err">' + esc(r.data.error || '读取失败') + '</div>'; return; }
+    if (!r.data.items.length) { box.innerHTML = '<div class="empty">暂无记录</div>'; return; }
+    box.innerHTML = '<table><tr><th>时间</th><th>阶段</th><th>输入</th><th>输出</th></tr>'
+      + r.data.items.slice().reverse().map(function (x) {
+        return '<tr><td>' + esc(x.at) + '</td><td><code>' + esc(x.stage) + '</code></td>'
+          + '<td>' + esc(clip(x.input)) + '</td><td>' + esc(clip(x.output)) + '</td></tr>';
+      }).join('') + '</table>';
+  });
+}
+
+/* ---------------- 加载与保存 ---------------- */
+
+function badge(text, cls) {
+  var el = document.getElementById('verBadge');
+  el.textContent = text;
+  el.className = 'badge' + (cls ? ' ' + cls : '');
+}
+
+function setDirty(on) {
+  cur.dirty = on;
+  document.getElementById('dirtyBadge').style.display = on ? '' : 'none';
+}
+
+function loadOverview() {
+  return api('/overview').then(function (r) {
+    if (r.status === 401) return logout('登录已失效，请重新登录');
+    if (!r.data.ok) return;
+    OV = r.data;
+    badge('内容版本 v' + OV.content.version);
+    if (cur.type === '__overview') renderEditor();
+  });
+}
+
+function loadType(type) {
+  cur.type = type;
+  cur.items = null;
+  cur.index = -1;
+  cur.errors = []; cur.warns = []; cur.search = '';
+  setDirty(false);
+  document.querySelector('main').className =
+    (type.indexOf('__') === 0 || !isListType()) ? 'compact' : '';
+  renderNav();
+
+  if (type.indexOf('__') === 0) {
+    renderList();
+    renderEditor();
+    if (type === '__overview') loadOverview();
+    return;
+  }
+
+  badge('内容版本 —');
+  renderList();
+  document.getElementById('editor').innerHTML = '<div class="empty">加载中…</div>';
+  api('/content/' + type).then(function (r) {
+    if (r.status === 401) return logout('登录已失效，请重新登录');
+    if (!r.data.ok) {
+      document.getElementById('editor').innerHTML = '<div class="note err">' + esc(r.data.error || '读取失败') + '</div>';
+      return;
+    }
+    cur.items = r.data.value;
+    cur.index = (Array.isArray(cur.items) && cur.items.length) ? 0 : -1;
+    badge('内容版本 v' + r.data.version);
+    renderList();
+    renderEditor();
+  });
+}
+
+function doSave() {
+  var btn = document.getElementById('saveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '发布中…'; }
+  cur.errors = []; cur.warns = [];
+  api('/content/' + cur.type, { method: 'PUT', body: { value: cur.items, actor: 'admin' } })
+    .then(function (r) {
+      if (r.status === 401) return logout('登录已失效，请重新登录');
+      if (!r.data.ok) {
+        cur.errors = r.data.errors || [{ path: '', message: r.data.error || '保存失败' }];
+        cur.warns = r.data.warnings || [];
+        renderEditor();
+        return;
+      }
+      cur.warns = r.data.warnings || [];
+      setDirty(false);
+      badge('内容版本 v' + r.data.version);
+      renderEditor();
+      loadOverview();
+    })
+    .catch(function (e) {
+      cur.errors = [{ path: '', message: '请求失败：' + e.message }];
+      renderEditor();
+    });
+}
+
+/* ---------------- 增删 ---------------- */
+
+function pickItem(i) {
+  if (cur.dirty && !confirm('当前有未保存的改动，切换后本地改动会丢失。继续？')) return;
+  cur.index = i;
+  cur.errors = []; cur.warns = [];
+  setDirty(false);
+  renderList();
+  renderEditor();
+}
+
+function addAt(path) {
+  var field = path === ''
+    ? { type: 'objectArray', item: SCHEMA[cur.type].root.item }
+    : findField(path);
+  if (!field) return;
+  if (field.type === 'stringArray') {
+    var arr = getByPath(cur.items, path);
+    if (!Array.isArray(arr)) { arr = []; setByPath(cur.items, path, arr); }
+    arr.push(field.enum ? field.enum[0] : '');
+  } else if (field.type === 'objectArray') {
+    var list = path === '' ? cur.items : getByPath(cur.items, path);
+    if (!Array.isArray(list)) return;
+    var item = blankItem(field.item);
+    if (field.item.fields.some(function (f) { return f.key === 'id'; })) {
+      item.id = 'new-' + Math.random().toString(36).slice(2, 8);
+    }
+    list.push(item);
+    if (path === '') { cur.index = list.length - 1; renderList(); }
+  } else {
+    return;
+  }
+  setDirty(true);
+  renderEditor();
+}
+
+function delAt(path, at) {
+  var list = path === '' ? cur.items : getByPath(cur.items, path);
+  if (!Array.isArray(list)) return;
+  var it = list[at] || {};
+  if (!confirm('确认删除「' + (it.name || it.label || it.q || ('第 ' + (at + 1) + ' 条')) + '」？保存后生效。')) return;
+  list.splice(at, 1);
+  if (path === '') {
+    cur.index = Math.min(cur.index, list.length - 1);
+    renderList();
+  }
+  setDirty(true);
+  renderEditor();
+}
+
+function delKey(path, key) {
+  var box = getByPath(cur.items, path);
+  if (!box) return;
+  delete box[key];
+  setDirty(true);
+  renderEditor();
+}
+
+function addKey(path) {
+  var box = getByPath(cur.items, path);
+  var field = findField(path);
+  if (!box || !field) return;
+  var all = (field.options && field.options.values) || [];
+  var avail = all.filter(function (id) { return !(id in box); });
+  if (!avail.length) { alert('所有体质都已添加'); return; }
+  box[avail[0]] = 1;
+  setDirty(true);
+  renderEditor();
+}
+
+/* ---------------- 事件 ---------------- */
+
+document.addEventListener('click', function (ev) {
+  var el = ev.target;
+  var id = el.id;
+
+  if (id === 'loginBtn') return tryLogin();
+  if (id === 'logoutBtn') return logout('');
+  if (id === 'refreshBtn') return loadType(cur.type || '__overview');
+  if (id === 'saveBtn') return doSave();
+  if (id === 'revertBtn') {
+    if (!cur.dirty || confirm('放弃未保存的改动，重新从服务端加载？')) loadType(cur.type);
+    return;
+  }
+  if (id === 'auditReload') return loadAudit();
+  if (id === 'rollbackBtn') return doRollback();
+  if (id === 'reseedBtn') return doReseed();
+
+  if (!el.getAttribute) return;
+
+  /* 按钮只含文本，事件目标就是按钮本身 —— 不做向上查找，
+     否则点击卡片空白处会冒泡到祖先的 data-add 上，误触发新增 */
+  var add = el.getAttribute('data-add');
+  if (add !== null) return addAt(add);
+
+  var del = el.getAttribute('data-del');
+  if (del !== null) return delAt(del, Number(el.getAttribute('data-at')));
+
+  var delk = el.getAttribute('data-delkey');
+  if (delk !== null) return delKey(delk, el.getAttribute('data-key'));
+
+  var addk = el.getAttribute('data-addkey');
+  if (addk !== null) return addKey(addk);
+
+  if (id === 'auditN') return loadAudit();
+
+  var pick = closestAttr(el, 'data-pick');
+  if (pick !== null) return pickItem(Number(pick));
+
+  var go = closestAttr(el, 'data-go');
+  if (go !== null) return loadType(go);
+});
+
+document.addEventListener('input', function (ev) {
+  var t = ev.target;
+  if (t.id === 'searchBox') {
+    cur.search = t.value;
+    renderList();
+    var box = document.getElementById('searchBox');
+    if (box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
+    return;
+  }
+  if (t.id === 'tok') return;
+  var p = t.getAttribute && t.getAttribute('data-path');
+  if (!p) return;
+  var v = t.value;
+  if (t.type === 'number') v = v === '' ? '' : Number(v);
+  setByPath(cur.items, p, v);
+  setDirty(true);
+});
+
+document.addEventListener('change', function (ev) {
+  var t = ev.target;
+  var mk = t.getAttribute && t.getAttribute('data-mapkey');
+  if (mk !== null && mk !== undefined) {
+    var box = getByPath(cur.items, mk);
+    var old = t.getAttribute('data-old');
+    var val = box[old];
+    delete box[old];
+    box[t.value] = val;
+    setDirty(true);
+    renderEditor();
+    return;
+  }
+  if (t.id === 'auditN') loadAudit();
+});
+
+window.addEventListener('beforeunload', function (e) {
+  if (cur.dirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ---------------- 危险操作 ---------------- */
+
+function doRollback() {
+  if (!confirm('确认回滚到上一版内容？当前版本会被替换。')) return;
+  api('/rollback', { method: 'POST', body: { actor: 'admin' } }).then(function (r) {
+    if (!r.data.ok) return alert(r.data.error || '回滚失败');
+    alert('已回滚，内容版本 v' + r.data.version);
+    loadOverview();
+    loadType(cur.type.indexOf('__') === 0 ? '__overview' : cur.type);
+  });
+}
+
+function doReseed() {
+  if (!confirm('将丢弃后台的全部编辑、恢复为代码内置内容。确认继续？')) return;
+  if (prompt('再确认一次，请输入 RESEED') !== 'RESEED') return;
+  api('/reseed', { method: 'POST', body: { confirm: 'RESEED', actor: 'admin' } }).then(function (r) {
+    if (!r.data.ok) return alert(r.data.error || '播种失败');
+    alert('已恢复为内置内容，版本 v' + r.data.version);
+    loadOverview();
+    loadType(cur.type.indexOf('__') === 0 ? '__overview' : cur.type);
+  });
+}
+
+/* ---------------- 登录与启动 ---------------- */
+
+function tryLogin() {
+  var tok = document.getElementById('tok').value.trim();
+  var msg = document.getElementById('gateMsg');
+  if (!tok) { msg.innerHTML = '<div class="msg">请输入令牌</div>'; return; }
+  document.getElementById('loginBtn').disabled = true;
+  TOKEN = tok;
+  api('/login', { method: 'POST', body: { token: tok } }).then(function (r) {
+    document.getElementById('loginBtn').disabled = false;
+    if (!r.data.ok) {
+      TOKEN = '';
+      msg.innerHTML = '<div class="msg">' + esc(r.data.error || '登录失败')
+        + (r.data.hint ? '<br>' + esc(r.data.hint) : '') + '</div>';
+      return;
+    }
+    localStorage.setItem('chalifang_admin_token', tok);
+    document.getElementById('gate').style.display = 'none';
+    boot();
+  }).catch(function (e) {
+    document.getElementById('loginBtn').disabled = false;
+    TOKEN = '';
+    msg.innerHTML = '<div class="msg">无法连接服务端：' + esc(e.message) + '</div>';
+  });
+}
+
+function logout(reason) {
+  TOKEN = '';
+  localStorage.removeItem('chalifang_admin_token');
+  document.getElementById('gate').style.display = 'flex';
+  document.getElementById('tok').value = '';
+  document.getElementById('gateMsg').innerHTML = reason ? '<div class="msg">' + esc(reason) + '</div>' : '';
+}
+
+function boot() {
+  api('/schema').then(function (r) {
+    if (!r.data.ok) return logout(r.data.error || '加载配置失败');
+    SCHEMA = r.data.schema;
+    TYPES = r.data.types;
+    PAGES = PAGES.filter(function (p) { return p.id.indexOf('__') === 0 || TYPES.indexOf(p.id) > -1; });
+    loadType('__overview');
+  }).catch(function (e) {
+    document.getElementById('editor').innerHTML = '<div class="note err">加载失败：' + esc(e.message) + '</div>';
+  });
+}
+
+document.getElementById('tok').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') tryLogin();
+});
+
+if (TOKEN) {
+  api('/overview').then(function (r) {
+    if (r.status === 200 && r.data.ok) { document.getElementById('gate').style.display = 'none'; boot(); }
+    else { TOKEN = ''; localStorage.removeItem('chalifang_admin_token'); }
+  }).catch(function () { /* 留在登录页 */ });
+}
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@ function decorate(ids) {
   return ids.map(function (id) {
     const t = teas.map[id];
     if (!t) return null;
-    const c = constitutions.get(t.constitution);
+    const c = constitutions.getOr(t.constitution);
     return Object.assign({}, t, {
       constitutionName: c.name
     });

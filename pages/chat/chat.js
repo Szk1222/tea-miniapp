@@ -19,8 +19,10 @@ Page({
     scrollTo: '',
     profile: null,
     mainName: '',
-    /** 是否走服务端 AI 增强（关闭后退化为纯本地规则，不外发任何数据） */
-    aiOn: true,
+    /** 是否走服务端 AI 增强（关闭后退化为纯本地规则，不外发任何数据）。
+     *  默认关闭：开启会把对话内容与体质类型发往服务端及第三方大模型，
+     *  必须先经过用户单独同意（见 requestAiConsent），真实取值在 onLoad 里从 store 读取。 */
+    aiOn: false,
     /** 服务端元信息，用于展示实际推理模式 */
     mode: ''
   },
@@ -53,11 +55,40 @@ Page({
 
   toggleAi() {
     const next = !this.data.aiOn;
-    store.setAiEnabled(next);
-    this.setData({ aiOn: next });
-    wx.showToast({
-      title: next ? '已开启 AI 增强' : '已切换为本地模式',
-      icon: 'none'
+    if (!next) {
+      store.setAiEnabled(false);
+      this.setData({ aiOn: false });
+      wx.showToast({ title: '已切换为本地模式', icon: 'none' });
+      return;
+    }
+    // 开启前必须单独取得同意：体质类型与提问内容会离开本机
+    this.requestAiConsent().then((ok) => {
+      if (!ok) return;
+      store.setAiConsent(true);
+      store.setAiEnabled(true);
+      this.setData({ aiOn: true });
+      wx.showToast({ title: '已开启 AI 增强', icon: 'none' });
+    });
+  },
+
+  /**
+   * 单独同意弹窗。文案必须与实际上行字段严格一致，
+   * 否则就变成另一种形式的「隐私说明不实」。
+   * 上行字段见 utils/agent-remote.js 的 minimalProfile()。
+   */
+  requestAiConsent() {
+    return new Promise((resolve) => {
+      wx.showModal({
+        title: '开启 AI 增强',
+        content: '开启后，你的提问内容与体质类型会发送至我们的服务器，并转交第三方大模型用于生成更贴合的回答。'
+          + '\n\n你的性别、年龄、慢性病名称、过敏史等原始填报内容不会上传，仅上传「是否需要特别提示」这一标记。'
+          + '\n\n可随时关闭；关闭后全部在本机完成，不发出任何网络请求。',
+        confirmText: '同意并开启',
+        cancelText: '暂不开启',
+        confirmColor: '#2E6B4F',
+        success: (res) => resolve(!!res.confirm),
+        fail: () => resolve(false)
+      });
     });
   },
 
@@ -67,7 +98,7 @@ Page({
     }
     const profile = store.getProfile();
     this.ctx.profile = profile && profile.constitutionId ? profile : null;
-    const mainName = this.ctx.profile ? constitutions.get(this.ctx.profile.constitutionId).name : '';
+    const mainName = this.ctx.profile ? constitutions.getOr(this.ctx.profile.constitutionId).name : '';
     this.setData({ profile: this.ctx.profile, mainName: mainName });
 
     const app = getApp();
@@ -173,6 +204,7 @@ Page({
   },
 
   dispatch(text) {
+    this.hintAiOnce();
     this.pushMessage({ role: 'user', type: 'text', text: text, time: stamp() });
     this.setData({ sending: true, mode: '' });
     this._streamIdx = -1;
@@ -199,11 +231,25 @@ Page({
         this.later(() => this.flushQueue(), 260);
       }
 
-      const mainName = this.ctx.profile ? constitutions.get(this.ctx.profile.constitutionId).name : '';
+      const mainName = this.ctx.profile ? constitutions.getOr(this.ctx.profile.constitutionId).name : '';
       this.setData({ profile: this.ctx.profile, mainName: mainName });
     }).catch(() => {
       this.closeStreamBubble();
       this.setData({ sending: false });
+    });
+  },
+
+  /**
+   * 一次性引导：AI 增强改为默认关闭后，用户可能不知道可以开启。
+   * 仅在「从未授权过」时提示一次（本次启动内），已授权的用户不会被反复打扰。
+   */
+  hintAiOnce() {
+    if (this._aiHinted || store.getAiConsent()) return;
+    this._aiHinted = true;
+    wx.showToast({
+      title: '当前为本地模式，点右上角可开启 AI 增强',
+      icon: 'none',
+      duration: 3000
     });
   },
 

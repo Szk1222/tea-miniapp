@@ -27,7 +27,19 @@ function json(key, fallback) {
 module.exports = {
   port: parseInt(env('PORT', '8787'), 10),
   host: env('HOST', '0.0.0.0'),
-  corsOrigin: env('CORS_ORIGIN', '*'),
+
+  /**
+   * 跨域白名单。
+   *
+   * 默认留空 = **不发送任何 Access-Control-Allow-Origin 响应头**（最严策略），原因：
+   *   - 小程序的 wx.request 不受浏览器同源策略约束，压根不读 CORS 头；
+   *   - 管理页由本服务自己托管，与接口同源，也不需要 CORS。
+   * 所以 "*" 对小程序毫无收益，只会让任意网页都能调用对话与管理接口，白白放大攻击面。
+   *
+   * 仅当把管理页部署到**另一个域名**下时才需要填，支持逗号分隔多个来源。
+   * 填 "*" 可恢复放开，但不建议用于生产。
+   */
+  corsOrigin: env('CORS_ORIGIN', ''),
 
   llm: {
     // 默认指向火山方舟（豆包）的 OpenAI 兼容端点。
@@ -67,6 +79,40 @@ module.exports = {
 
   session: {
     ttlMs: 30 * 60 * 1000,
-    maxTurns: 8
+    maxTurns: 8,
+    /** 会话数上限。超限时按最久未活跃淘汰，防止伪造 sessionId 撑爆内存 */
+    maxSessions: parseInt(env('SESSION_MAX', '5000'), 10)
+  },
+
+  /**
+   * 公开接口限流。目标不是防 DDoS，而是防止**大模型额度被刷爆** ——
+   * 方舟额度记在开发者账号上，接口公开却无限流时，任何人都能脚本刷量产生真实费用。
+   * 配额按 IP + 接口组计数，固定窗口。
+   */
+  rateLimit: {
+    // 设为 false 可整体关闭（仅供压测/回归使用，生产不要关）
+    enabled: env('RATE_LIMIT_ENABLED', 'true') !== 'false',
+    windowMs: parseInt(env('RATE_LIMIT_WINDOW_MS', '60000'), 10),
+    /** 对话类接口：单 IP 每窗口上限。调大前先想清楚被刷的账单 */
+    chatMax: parseInt(env('RATE_LIMIT_CHAT_MAX', '20'), 10),
+    /** 其余公开接口（内容下发、检索、科普） */
+    apiMax: parseInt(env('RATE_LIMIT_API_MAX', '60'), 10),
+    /** 最多跟踪多少个 IP，超过则按插入顺序淘汰，避免限流表本身成为内存漏点 */
+    maxTrackedIps: parseInt(env('RATE_LIMIT_MAX_IPS', '20000'), 10)
+  },
+
+  /** 内容与审计日志的落盘位置（容器里要挂 volume，否则重启即失） */
+  storage: {
+    dir: env('STORAGE_DIR', path.join(__dirname, '..', 'storage')),
+    auditRetentionDays: parseInt(env('AUDIT_RETENTION_DAYS', '7'), 10)
+  },
+
+  admin: {
+    // 管理后台访问令牌。留空表示管理端整体关闭（接口一律 403），
+    // 避免「忘了配」变成「谁都能改线上内容」。
+    token: env('ADMIN_TOKEN', ''),
+    // 登录失败限流：同一 IP 连续失败达到阈值后锁定一段时间，防在线爆破
+    maxLoginFails: parseInt(env('ADMIN_MAX_LOGIN_FAILS', '5'), 10),
+    lockMs: parseInt(env('ADMIN_LOCK_MS', '300000'), 10)
   }
 };

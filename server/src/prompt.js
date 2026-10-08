@@ -64,30 +64,28 @@ function runtimeContext(ctx) {
 
   const p = ctx.profile;
   if (p && p.constitutionId) {
-    const c = CONSTITUTIONS.get(p.constitutionId);
-    const secondary = p.secondaryId ? CONSTITUTIONS.get(p.secondaryId) : null;
+    const c = CONSTITUTIONS.getOr(p.constitutionId);
+    const secondary = p.secondaryId ? CONSTITUTIONS.getOr(p.secondaryId) : null;
     lines.push(
       '用户体质档案：主导「' + c.name + '」，倾向度 ' + (p.percent || 0) + '%，' +
       (p.levelText || '') +
       (secondary ? '；兼夹「' + secondary.name + '」（' + secondary.short + '）' : '；无明显兼夹')
     );
     lines.push('该体质特征：' + c.features.join('；') + '。调理原则：' + c.principle);
-    if (p.basic) {
-      const b = p.basic;
-      const extra = [];
-      if (b.age) extra.push('年龄区间 ' + b.age);
-      if (b.gender) extra.push('性别 ' + b.gender);
-      if (b.stage && b.stage !== '无') extra.push('特殊阶段 ' + b.stage);
-      if (b.conditions && b.conditions.length) extra.push('基础健康情况 ' + b.conditions.join('、'));
-      if (b.tastes && b.tastes.length) extra.push('口味偏好 ' + b.tastes.join('、'));
-      if (b.allergy) extra.push('过敏史 ' + b.allergy);
-      if (extra.length) lines.push('用户既往填报：' + extra.join('；') + '。');
+
+    // 只使用布尔风险标记，绝不使用原始填报值：
+    // 端上不上传性别/年龄/慢性病名称/过敏史原文（见 utils/agent-remote.js），
+    // 服务端再兜一层（见 index.js 的 stripSensitiveProfile）。
+    // 标记本身是必须保留的 —— 它决定「是否必须先做风险提示、是否不给配方」。
+    const risk = p.risk || {};
+    if (risk.stage) {
+      lines.push('注意：该用户处于需要特别提示的生理阶段（孕期/哺乳期等），必须先调用 flag_risk，且不给出具体配方。');
     }
-    if (p.basic && p.basic.stage && p.basic.stage !== '无') {
-      lines.push('注意：该用户处于「' + p.basic.stage + '」，属于敏感阶段，必须先调用 flag_risk，且不给出具体配方。');
+    if (risk.chronic) {
+      lines.push('注意：该用户存在基础健康情况或长期服药情形，属需要谨慎提示的人群，推荐前先调用 flag_risk。');
     }
-    if (p.basic && p.basic.conditions && p.basic.conditions.filter(function (x) { return x !== '以上都没有'; }).length) {
-      lines.push('注意：该用户填报了基础健康情况，属于需要谨慎提示的人群，推荐前先调用 flag_risk。');
+    if (risk.allergy) {
+      lines.push('注意：该用户有过敏史，必须先调用 flag_risk，提示优先选择成分单一的茶方并少量试饮。');
     }
   } else {
     lines.push('用户尚未完成体质测评，没有体质档案。请只给通用方向建议，并在合适时机用 start_assessment 引导他去做测评。');

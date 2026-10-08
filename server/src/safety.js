@@ -7,9 +7,14 @@
  *    再交给客户端渲染，形成「输入端 + 输出端」双重兜底。
  *
  * 之所以把风控放在模型之外，是因为提示词约束是概率性的，而合规是硬性要求。
+ *
+ * 留痕双写：内存环形缓冲（给 /api/admin/raw-audit 快速返回）+ JSONL 落盘
+ *（给管理后台做长期可追溯，见 audit-store.js）。
+ * 注意：审计条目里含用户输入原文，因此**只允许通过带鉴权的管理接口读取**。
  */
 const agent = require('../../utils/agent.js');
 const knowledge = require('../../data/knowledge.js');
+const auditStore = require('./audit-store.js');
 
 /* ---------------- 出站词表 ---------------- */
 
@@ -103,10 +108,12 @@ function riskHints(input, ctx) {
   });
   if (hits.length) return hits;
   const p = ctx.profile;
-  if (p && p.basic) {
-    if (p.basic.stage && p.basic.stage !== '无') hits.push('stage');
-    if (p.basic.conditions && p.basic.conditions.filter(function (x) { return x !== '以上都没有'; }).length) hits.push('chronic');
-    if (p.basic.allergy) hits.push('allergy');
+  // 只用布尔风险标记：端上不上传性别/年龄/慢性病名称/过敏史原文
+  // （端上见 utils/agent-remote.js，服务端兜底见 index.js 的 stripSensitiveProfile）
+  if (p && p.risk) {
+    if (p.risk.stage) hits.push('stage');
+    if (p.risk.chronic) hits.push('chronic');
+    if (p.risk.allergy) hits.push('allergy');
   }
   return hits;
 }
@@ -216,6 +223,7 @@ function audit(stage, payload, result) {
   };
   AUDIT.push(item);
   if (AUDIT.length > AUDIT_MAX) AUDIT.shift();
+  auditStore.append(item);
   if (process.env.LOG_LEVEL !== 'silent') {
     console.log('[audit] ' + item.stage + ' ' + JSON.stringify(item.output).slice(0, 200));
   }

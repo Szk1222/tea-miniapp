@@ -1,0 +1,257 @@
+# 茶历方 · CI / 部署流水线
+#
+# 结构：verify 是闸门，image 与 miniprogram 都 needs: verify
+#       —— 校验不过就绝不会产出镜像或上传体验版（不是靠约定，是依赖图保证的）
+#
+# 触发：
+#   push 到 master / main  → 校验 + 推送服务端镜像到 GHCR
+#   push tag v*            → 校验 + 推送镜像（带版本标签）+ 上传小程序体验版
+#   手动 workflow_dispatch → 校验 + 推送镜像；勾选 upload_miniprogram 则一并上传小程序
+#
+# 需要配置的 Secrets（Settings → Secrets and variables → Actions）：
+#   MINIPROGRAM_PRIVATE_KEY  小程序代码上传密钥文件的 base64（仅上传体验版时需要）
+#
+# GITHUB_TOKEN 由 Actions 自动提供，推送 GHCR 用它即可，无需自建 PAT。
+
+name: CI / 部署
+
+on:
+  push:
+    branches: [master, main]
+    tags: ['v*']
+    paths:
+      - 'pages/**'
+      - 'components/**'
+      - 'custom-tab-bar/**'
+      - 'data/**'
+      - 'utils/**'
+      - 'server/**'
+      - 'app.js'
+      - 'app.json'
+      - 'app.wxss'
+      - 'sitemap.json'
+      - 'project.config.json'
+      - '.github/**'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      upload_miniprogram:
+        description: '同时上传小程序体验版'
+        type: boolean
+        default: false
+      version:
+        description: '小程序版本号（上传时必填，例如 1.0.0）'
+        type: string
+        default: ''
+      desc:
+        description: '小程序版本描述'
+        type: string
+        default: ''
+
+# 同一分支连推多次时，取消上一次未跑完的任务，避免排队
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ============================================================
+  # 1. 校验闸门
+  # ============================================================
+  verify:
+    name: 校验 · 语法 / 配置 / 回归
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 准备 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: JS 语法检查
+        run: |
+          set -euo pipefail
+          n=0
+          while IFS= read -r f; do
+            node --check "$f"
+            n=$((n + 1))
+          done < <(find . -name '*.js' -not -path './node_modules/*' -not -path './.git/*')
+          echo "✓ JS 语法通过：$n 个文件"
+
+      - name: JSON 配置校验
+        run: |
+          set -euo pipefail
+          n=0
+          while IFS= read -r f; do
+            node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$f"
+            n=$((n + 1))
+          done < <(find . -name '*.json' -not -path './node_modules/*' -not -path './.git/*')
+          echo "✓ JSON 可解析：$n 个文件"
+
+      # 这道防线是刻意加的：server/ 与小程序同仓，一旦 .env 被误提交，
+      # 密钥就等于公开（方舟额度记在开发者账号上，会被刷真实资费）
+      - name: 密钥泄漏防线
+        run: |
+          set -euo pipefail
+          if git ls-files --error-unmatch server/.env >/dev/null 2>&1; then
+            echo "::error::server/.env 被纳入版本库，密钥已泄漏，必须立即删除并轮换"
+            exit 1
+          fi
+          hits=$(git grep -lE 'ark-[A-Za-z0-9_-]{24,}' -- . ':!*.md' ':!*.example' || true)
+          if [ -n "$hits" ]; then
+            echo "::error::以下文件疑似含方舟 API Key 明文（只报文件名，不回显内容）"
+            printf '%s\n' "$hits"
+            exit 1
+          fi
+          echo "✓ server/.env 未被追踪，且未发现密钥明文"
+
+      - name: 服务端回归测试
+        working-directory: server
+        run: npm test
+
+  # ============================================================
+  # 2. 服务端镜像 → GHCR
+  # ============================================================
+  image:
+    name: 构建并推送服务端镜像
+    needs: verify
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE: chalifang-agent
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 仓库名是 “-”，不是合法的 Docker 仓库名（Docker 要求分隔符两侧都有字母数字），
+      # 所以镜像名固定用 chalifang-agent；GHCR 还要求路径全小写，这里对 owner 做小写化。
+      - name: 解析镜像地址
+        id: img
+        run: |
+          set -euo pipefail
+          owner=$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "ref=${REGISTRY}/${owner}/${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "镜像地址：${REGISTRY}/${owner}/${IMAGE}"
+
+      - name: 准备 Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # latest 不用 {{is_default_branch}}：那取决于仓库设置里的默认分支，
+      # 若与 master 不一致，latest 会静默地永远不产出。这里显式判断。
+      - name: 生成标签
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.img.outputs.ref }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' }}
+
+      # 构建上下文是仓库根目录：Dockerfile 要 COPY ../data 与 ../utils，
+      # 服务端与小程序共用同一份知识源，不能只 COPY server/
+      - name: 构建并推送
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: server/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================
+  # 3. 小程序体验版 → 微信公众平台
+  # ============================================================
+  miniprogram:
+    name: 上传小程序体验版
+    needs: verify
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.upload_miniprogram == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 准备 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 密钥只在 runner 的临时目录出现，工作流结束后随之销毁；
+      # 不写入仓库、不打印到日志（printf 到文件，不回显内容）
+      - name: 写入上传密钥
+        env:
+          MP_PRIVATE_KEY: ${{ secrets.MINIPROGRAM_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MP_PRIVATE_KEY}" ]; then
+            echo "::error::未配置 Secrets.MINIPROGRAM_PRIVATE_KEY"
+            echo "请在 仓库 Settings → Secrets and variables → Actions 添加该 Secret，"
+            echo "值为上传密钥文件的 base64 单行文本（base64 -w0 private.wxXXXX.key）。"
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/mp"
+          printf '%s' "$MP_PRIVATE_KEY" | base64 -d > "$RUNNER_TEMP/mp/private.key"
+          if [ ! -s "$RUNNER_TEMP/mp/private.key" ]; then
+            echo "::error::密钥解码为空，请确认 Secret 内容是密钥文件的 base64，且为单行"
+            exit 1
+          fi
+          chmod 600 "$RUNNER_TEMP/mp/private.key"
+          echo "MP_KEY_PATH=$RUNNER_TEMP/mp/private.key" >> "$GITHUB_ENV"
+
+      # 装在全局而不是项目内：项目内的 node_modules/ 会落进上传目录，
+      # 虽然会被忽略规则排除，但没必要冒这个险。require 靠 NODE_PATH 找到它。
+      - name: 安装 miniprogram-ci
+        run: |
+          set -euo pipefail
+          npm i -g miniprogram-ci@2
+          echo "NODE_PATH=$(npm root -g)" >> "$GITHUB_ENV"
+
+      - name: 解析版本号与描述
+        id: ver
+        env:
+          IN_VERSION: ${{ github.event.inputs.version }}
+          IN_DESC: ${{ github.event.inputs.desc }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            v="${GITHUB_REF_NAME#v}"
+            d="tag ${GITHUB_REF_NAME}"
+          else
+            v="$IN_VERSION"
+            d="$IN_DESC"
+          fi
+          if [ -z "$v" ]; then
+            echo "::error::未提供版本号：打 tag 推送（如 v1.0.0），或手动触发时填写 version"
+            exit 1
+          fi
+          if [ -z "$d" ]; then
+            d="CI 上传 ${GITHUB_SHA:0:7}"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "desc=$d" >> "$GITHUB_OUTPUT"
+          echo "将上传：v$v —— $d"
+
+      - name: 上传体验版
+        env:
+          MP_APPID: wxda7a648bda4e9cfa
+          MP_VERSION: ${{ steps.ver.outputs.version }}
+          MP_DESC: ${{ steps.ver.outputs.desc }}
+        run: node .github/scripts/upload-miniprogram.js

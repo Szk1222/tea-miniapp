@@ -126,8 +126,31 @@ const BASIC = {
   tastes: ['喜清淡', '偏甜', '偏苦涩能接受', '不喜欢药材味', '都可以']
 };
 
+/**
+ * 内容覆盖：就地改写 QUESTIONS 与 BASIC。
+ * BASIC 是常量对象，逐键替换而非换引用，避免已持有它的模块读到旧值。
+ * @param {{list:Array, basic:object}} next 量表内容；字段缺失时保留原值
+ * @returns {number} 覆盖后的题目数
+ */
+function applyOverride(next) {
+  const list = next && next.list;
+  if (Array.isArray(list) && list.length) {
+    QUESTIONS.length = 0;
+    Array.prototype.push.apply(QUESTIONS, list);
+    module.exports.total = QUESTIONS.length;
+  }
+  const basic = next && next.basic;
+  if (basic && typeof basic === 'object' && !Array.isArray(basic)) {
+    Object.keys(basic).forEach(function (k) {
+      if (Array.isArray(basic[k]) && basic[k].length) BASIC[k] = basic[k];
+    });
+  }
+  return QUESTIONS.length;
+}
+
 module.exports = {
   list: QUESTIONS,
   basic: BASIC,
-  total: QUESTIONS.length
+  total: QUESTIONS.length,
+  applyOverride: applyOverride
 };

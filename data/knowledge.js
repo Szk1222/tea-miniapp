@@ -78,11 +78,35 @@ const FAQ = [
 ];
 
 const MAP = {};
-INGREDIENTS.forEach(function (i) { MAP[i.name] = i; });
+
+function rebuildMap() {
+  Object.keys(MAP).forEach(function (k) { delete MAP[k]; });
+  INGREDIENTS.forEach(function (i) { MAP[i.name] = i; });
+}
+rebuildMap();
+
+/**
+ * 内容覆盖：就地改写 INGREDIENTS / FAQ，并重建食材名索引。
+ * @param {{ingredients:Array, faq:Array}} next 知识库内容；字段缺失时保留原值
+ * @returns {number} 覆盖后的食材条数
+ */
+function applyOverride(next) {
+  if (next && Array.isArray(next.ingredients) && next.ingredients.length) {
+    INGREDIENTS.length = 0;
+    Array.prototype.push.apply(INGREDIENTS, next.ingredients);
+    rebuildMap();
+  }
+  if (next && Array.isArray(next.faq) && next.faq.length) {
+    FAQ.length = 0;
+    Array.prototype.push.apply(FAQ, next.faq);
+  }
+  return INGREDIENTS.length;
+}
 
 module.exports = {
   ingredients: INGREDIENTS,
   faq: FAQ,
   ingredientMap: MAP,
-  findIngredient: function (name) { return MAP[name] || null; }
+  findIngredient: function (name) { return MAP[name] || null; },
+  applyOverride: applyOverride
 };

@@ -30,8 +30,8 @@ Page({
       this.setData({ hasProfile: false });
       return;
     }
-    const c = constitutions.get(profile.constitutionId);
-    const secondary = profile.secondaryId ? constitutions.get(profile.secondaryId) : null;
+    const c = constitutions.getOr(profile.constitutionId);
+    const secondary = profile.secondaryId ? constitutions.getOr(profile.secondaryId) : null;
     const season = engine.seasonOf();
     const recommend = engine.recommend(c.id, {
       secondary: profile.secondaryId,

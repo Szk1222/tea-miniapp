@@ -12,6 +12,7 @@ const CONSTITUTIONS = require('../../data/constitutions.js');
 const TEAS = require('../../data/teas.js');
 const knowledge = require('../../data/knowledge.js');
 const agent = require('../../utils/agent.js');
+const overlay = require('../../utils/content-overlay.js');
 const rag = require('./rag.js');
 const safety = require('./safety.js');
 
@@ -39,7 +40,16 @@ const CHIPS_AFTER_RECOMMEND = [
 
 /* ---------------- 工具定义 ---------------- */
 
-const TOOLS = [
+/**
+ * 工具定义里内嵌了「体质 id 枚举」和「茶方 id 枚举」，必须按内容版本惰性重建 ——
+ * 管理后台新增一个体质或茶方后，如果沿用启动时构造的那份定义，
+ * 模型永远不可能推荐到新条目（枚举里没有，模型只能瞎猜或忽略）。
+ */
+let toolsCache = null;
+let toolsCacheVersion = -1;
+
+function buildTools() {
+  return [
   {
     type: 'function',
     function: {
@@ -142,7 +152,17 @@ const TOOLS = [
       parameters: { type: 'object', properties: {}, required: [] }
     }
   }
-];
+  ];
+}
+
+function currentTools() {
+  const v = overlay.getVersion();
+  if (!toolsCache || toolsCacheVersion !== v) {
+    toolsCache = buildTools();
+    toolsCacheVersion = v;
+  }
+  return toolsCache;
+}
 
 /* ---------------- 执行器 ---------------- */
 
@@ -168,7 +188,7 @@ const EXECUTORS = {
 
   async recommend_tea(args, ctx) {
     const cid = resolveConstitution(args, ctx);
-    const c = CONSTITUTIONS.get(cid);
+    const c = CONSTITUTIONS.getOr(cid);
 
     const exclude = (args.exclude_ids || []).slice();
     let avoided = '';
@@ -374,7 +394,8 @@ async function run(name, rawArgs, ctx) {
 }
 
 module.exports = {
-  TOOLS: TOOLS,
+  get TOOLS() { return currentTools(); },
+  buildTools: buildTools,
   run: run,
   TAG_LABEL: TAG_LABEL,
   CHIPS_AFTER_RECOMMEND: CHIPS_AFTER_RECOMMEND

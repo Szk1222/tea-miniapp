@@ -95,7 +95,21 @@ node --env-file=server/.env server/scripts/check-llm.js
 node --env-file=server/.env server/scripts/check-llm.js   # 大模型连通性自检（Key/模型/工具/思考开关）
 node server/scripts/eval.js                               # 检索 / 风控 / 事实一致性 三块指标（不花额度）
 node server/scripts/build-index.js                        # 重建检索索引（可选生成向量）
+
+# 回归自检（全部用临时 STORAGE_DIR，不污染实际数据）
+node server/scripts/smoke-overlay.js   # 内容覆盖层：就地改写后所有外部引用是否同步
+node server/scripts/smoke-schema.js    # 字段与合规校验：内置内容必须全过、违规内容必须被拦
+node server/scripts/smoke-content.js   # 内容中心：发布 / 拦截 / 交叉校验 / 回滚 / 索引重建
+node server/scripts/smoke-admin.js     # 管理接口：鉴权 / 限流 / 读写 / 下发 / 留痕
+node server/scripts/smoke-client.js    # 小程序端链路：拉取生效 / 降级兜底 / 单独同意（服务端子进程）
+node server/scripts/smoke-security.js  # 安全边界：隐私剥离 / 审计鉴权 / CORS / 接口限流
 ```
+
+也可以 `cd server && npm test` 一次跑完六个自检（任一套件失败即中断，退出码非 0）。
+
+`smoke-security.js` 值得单独说一句：它在本地起一个**假的大模型端点**，把服务端
+**真实发出的请求体**抓下来做断言，验证「敏感原文确实没上传、风险标记确实还在」。
+改提示词、改上行字段、改 `stripSensitiveProfile` 之后务必跑它。
 
 ---
 
@@ -117,7 +131,18 @@ node server/scripts/build-index.js                        # 重建检索索引�
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | 向量模型（豆包需换成方舟对应的 embedding Model ID） |
 | `RAG_TOP_K` / `RAG_MIN_SCORE` | `4` / `0.10` | 召回条数与相关度阈值 |
 | `RAG_VECTOR_WEIGHT` | `0.62` | 向量分与关键词分的融合权重 |
-| `CORS_ORIGIN` | `*` | 跨域白名单 |
+| `CORS_ORIGIN` | 空 | 跨域白名单。**留空 = 不下发任何 CORS 头**（见下） |
+| `RATE_LIMIT_ENABLED` | `true` | 公开接口限流总开关（仅压测/回归时关，生产不要关） |
+| `RATE_LIMIT_WINDOW_MS` | `60000` | 限流窗口长度（毫秒） |
+| `RATE_LIMIT_CHAT_MAX` | `20` | 对话类接口单 IP 每窗口上限 |
+| `RATE_LIMIT_API_MAX` | `60` | 其余公开接口单 IP 每窗口上限 |
+| `RATE_LIMIT_MAX_IPS` | `20000` | 限流表最多跟踪多少个 IP，超出按插入顺序淘汰 |
+| `SESSION_MAX` | `5000` | 会话数上限，超出按最久未活跃淘汰 |
+| `ADMIN_TOKEN` | — | 管理后台访问令牌。**留空则管理端整体关闭（接口一律 403）** |
+| `ADMIN_MAX_LOGIN_FAILS` | `5` | 同一 IP 连续登录失败几次后锁定 |
+| `ADMIN_LOCK_MS` | `300000` | 锁定时长（毫秒，默认 5 分钟） |
+| `STORAGE_DIR` | `server/storage` | 内容库与审计日志落盘目录。**容器部署必须挂 volume** |
+| `AUDIT_RETENTION_DAYS` | `7` | 审计日志保留天数，按天分文件、过期自动清理 |
 
 ---
 
@@ -127,13 +152,34 @@ node server/scripts/build-index.js                        # 重建检索索引�
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/health` | 健康检查，返回模型、索引规模、检索模式、会话数 |
+| GET | `/health` | 健康检查，返回模型、索引规模、检索模式、**内容版本**、会话数 |
+| GET | `/api/content` | **内容下发**，小程序启动时按 `?version=N` 拉取（版本一致只回版本号） |
 | POST | `/api/agent/chat` | **流式对话（SSE）**，小程序主链路 |
 | POST | `/api/agent/chat.json` | 非流式对话，用于联调或基础库不支持 chunked 时降级 |
 | POST | `/api/agent/assess` | 体质量表评分（服务端复核同一套算法） |
 | POST | `/api/agent/recommend` | 按体质 + 季节 + 排除项直接取茶方 |
 | POST | `/api/agent/retrieve` | RAG 检索调试，返回每条的稀疏分/向量分/重排分 |
-| GET | `/api/agent/audit` | 最近的风控与工具调用留痕 |
+| GET | `/api/agent/knowledge` | 食材科普查询 |
+| GET | `/api/admin/raw-audit` | 最近的风控与工具调用留痕（内存环形缓冲）。**需令牌** |
+
+> **已下线**：原来的 `GET /api/agent/audit` 是**无令牌公开**的，而条目里的 `input`
+> 就是用户输入原文 —— 等于把线上用户的健康类对话片段公开在互联网上。
+> 现在只保留带鉴权的 `/api/admin/raw-audit`（落盘版见 `/api/admin/audit`）。
+
+管理端接口（全部要求 `Authorization: Bearer <ADMIN_TOKEN>`，见「内容管理后台」）：
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/admin` | 管理页面（静态外壳，不鉴权；数据接口都要令牌） |
+| POST | `/api/admin/login` | 校验令牌，失败按 IP 限流锁定 |
+| GET | `/api/admin/overview` | 概览：内容版本、条数、索引、会话、审计、存储 |
+| GET | `/api/admin/schema` | 字段描述，管理端据此自动渲染表单 |
+| GET | `/api/admin/content/:type` | 读取某类内容（`teas`/`constitutions`/`questions`/`knowledge`/`catalog`） |
+| PUT | `/api/admin/content/:type` | **发布某类内容**（整体替换，校验不过直接 422） |
+| GET | `/api/admin/journal` | 本进程的内容变更流水 |
+| POST | `/api/admin/rollback` | 回滚到上一版 |
+| POST | `/api/admin/reseed` | 用代码内置内容重新播种（需 `confirm: "RESEED"`） |
+| GET | `/api/admin/audit` | 审计留痕（落盘版，跨重启可查） |
 
 ### 请求体（chat）
 
@@ -227,7 +273,153 @@ event: error   {"message":"..."}
 
 ---
 
+## 内容管理后台
+
+### 解决什么问题
+
+内容（18 款茶方 / 9 种体质 / 10 题量表 / 28 味食材 / 10 条常识）原来硬编码在 `data/*.js` 里，
+并被小程序打包带走 —— 改一个字都要重新提审发版。管理后台把内容搬到服务端，改完即生效。
+
+### 架构：一处覆盖，全身生效
+
+```
+管理后台 PUT /api/admin/content/:type
+        │  ① 结构 + 合规 + 跨类型交叉校验，不过则 422 且线上内容一字不动
+        ▼
+  server/storage/content.json          ② 原子写（.tmp + rename），旧版留一份 content.prev.json
+        │
+        ▼
+  utils/content-overlay.js  apply()    ③ 就地改写 data/*.js 的数组与索引
+        │                                 （不换引用 —— 端上 22 处、服务端 9 处消费点全部无需改动）
+        ├──► utils/engine.js reload()   ④ 重算体质理论最高分（否则倾向度百分比会失真）
+        ├──► tools.js 惰性重建工具定义   ⑤ 体质/茶方枚举跟着内容版本走（否则模型推荐不到新条目）
+        └──► rag.buildIndex()           ⑥ 重建检索索引（否则对话里检索到的还是旧文案）
+        ▼
+  内容版本号 +1  →  GET /api/content?version=N  →  小程序下次启动生效，无需发版
+```
+
+**关键取舍**：没有把 20 多处消费点改成异步取数，而是让 `data/*.js` 支持「就地覆盖」。
+代价是这三个模块的派生缓存必须显式刷新（`engine.MAX_SCORE`、工具枚举、RAG 索引），
+漏掉任何一个都会出现「大部分对了、某一处不对」的隐蔽问题 —— 这也是 `smoke-overlay.js`
+存在的意义。
+
+### 保存前的三重校验
+
+| 关卡 | 拦什么 | 例子 |
+|---|---|---|
+| 结构校验 | 必填、长度、枚举、id 唯一、id 格式、颜色格式 | 茶方名为空、体质 id 写成 `buzhidao`、两条记录同 id |
+| 合规校验 | 复用 `safety.js` 的**同一份风控词表**，外加内容侧红线 | 写「可治疗失眠」「根治」「替代药物」直接拒绝 |
+| 交叉校验 | 本次改动会不会让其他内容失效 | 删掉 `pinghe` 体质 → 引用它的茶方与量表全部报警，整批拒绝并**自动还原** |
+
+合规校验有两处工程细节值得说明：
+
+1. **免责语豁免**：`不具备医疗诊断与治疗资质` 这类合规表述本身含「治疗」，先剔除这些固定短语再扫描；
+2. **否定语境豁免**：命中词前 6 个字里出现「不/非/无/未/别/勿/免」时不算违规（`本品不治疗疾病` 放行）。
+   疾病名（高血压/糖尿病…）**只告警不阻断** —— 合规上恰恰需要识别这些人群。
+
+dosage 也有两道线：单味 > 10g 告警，> 30g 阻断；食材必须在「药食同源目录」内，口径与
+`scripts/eval.js` 的茶方合规率检查完全一致。
+
+### 怎么用
+
+```bash
+# 1. 生成令牌（32 位以上随机串）
+node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
+# 2. 填进 server/.env 的 ADMIN_TOKEN，重启服务
+# 3. 打开 http://<host>:8787/admin，粘贴令牌登录
+```
+
+页面左侧是五类内容 + 概览 + 变更记录 + 审计留痕；表单由 `/api/admin/schema` 下发，
+**加字段只需要改 `content-schema.js`**，服务端校验与管理端表单会同步跟上，不会两边不一致。
+
+误操作有两道保险：`回滚到上一版`（恢复 `content.prev.json`，版本号继续递增所以客户端能感知）
+和概览页的 `用内置数据重新播种`（需输入 `RESEED` 二次确认）。
+
+### 鉴权与安全边界
+
+- **单令牌模型**：`ADMIN_TOKEN` + `Authorization: Bearer`，`timingSafeEqual` 比较防时序侧信道；
+  同一 IP 连续失败 `ADMIN_MAX_LOGIN_FAILS` 次锁定 `ADMIN_LOCK_MS`
+- `ADMIN_TOKEN` 留空 → 管理接口一律 403。这是故意的：宁可「忘了配导致管理端不可用」，
+  也不要「忘了配导致谁都能改线上内容」
+- 令牌放 `server/.env`（已在 `.gitignore` / `.dockerignore`），**不要提交、不要在群里发**
+- 管理页面带 `noindex`，且所有数据接口都要令牌 —— 页面外壳本身不鉴权，拿到 HTML 也读不到内容
+- **审计留痕不对外公开**：`/api/agent/audit` 已下线（它无令牌即返回用户输入原文），
+  只保留带鉴权的 `/api/admin/raw-audit`
+- **已知局限**：没有多账号、没有角色权限、没有令牌过期与轮换。单人或小团队运营够用；
+  一旦要多人协作或权限分级，需要换成账号体系（届时 `/api/admin/*` 的路由与 `authGuard` 是唯一改动点）
+
+### 公开接口限流（防大模型额度被刷爆）
+
+方舟额度**记在开发者账号**上。接口公开却无限流时，任何人拿到域名（反编译小程序即可取得）
+都能脚本刷量，产生真实资费。因此 `/api/agent/chat`、`/api/agent/chat.json` 与其余公开接口
+都走了 IP 限流（见 `src/ratelimit.js`，配额见「环境变量」章节），超限返回 429 与 `Retry-After`。
+
+两个必须知道的局限：
+
+1. **单进程内存态**。多实例部署时各限各的，阈值等价于乘以实例数；要精确全局限流请放到
+   Nginx（`limit_req`）或共享存储。
+2. **IP 可伪造**。若反向代理**没有覆写** `X-Forwarded-For`，客户端可自带该头绕过限流。
+   Nginx 侧必须写：`proxy_set_header X-Forwarded-For $remote_addr;`
+   （这条同时也决定了管理端登录锁定是否有效 —— 两者用的是同一个 IP 取值函数。）
+
+### CORS：默认完全关闭
+
+`CORS_ORIGIN` 默认留空，即**不下发任何 `Access-Control-Allow-*` 响应头**。原因：
+
+- 小程序的 `wx.request` 不受浏览器同源策略约束，压根不读 CORS 头；
+- 管理页由本服务自己托管，与接口同源，也不需要 CORS。
+
+所以 `*` 对小程序毫无收益，只会让任意网页都能调用对话与管理接口。仅当把管理页部署到
+**另一个域名**下时才需要配置（支持逗号分隔多个来源）。
+
+### 隐私：上行档案的最小化
+
+用户的性别、年龄段、孕期/哺乳期、慢性病、过敏史属于《个人信息保护法》定义的**敏感个人信息**，
+向服务端与第三方大模型传输需要单独同意。因此：
+
+- **端上**（`utils/agent-remote.js` 的 `minimalProfile`）只上传体质类型与
+  `risk: { stage, chronic, allergy }` 三个布尔标记，原始值不出端；
+- **服务端**（`src/index.js` 的 `stripSensitiveProfile`）再兜一层，并且对**旧版本客户端**
+  仍然透传上来的 `basic` 做就地降维 —— 不能只是「删掉了事」，
+  那会把「先做风险提示、不给具体配方」的合规安全网一起删掉；
+- `src/prompt.js` 只使用标记，不再把原始填报值拼进 prompt。
+
+回归验证见 `scripts/smoke-security.js`：它在本地起一个假模型端点，把服务端**真实发出的请求体**
+抓下来断言「敏感原文不存在、风险标记仍存在」。
+
+### 持久化与部署
+
+| 路径 | 内容 | 是否进仓库 |
+|---|---|---|
+| `server/storage/content.json` | 当前生效内容 + 版本号 | 否（`.gitignore`） |
+| `server/storage/content.prev.json` | 上一版备份，供回滚 | 否 |
+| `server/storage/audit-YYYY-MM-DD.jsonl` | 风控与工具调用留痕，按天切分 | 否 |
+
+**容器部署务必挂 volume**，否则重启就丢后台改动。
+
+compose 里用的是**具名卷**（`chalifang-storage` / `chalifang-cache`）而不是绑定挂载：
+容器以非 root（uid 1000）运行，绑定挂载 `./storage` 时宿主机目录属主通常不是 1000，
+会导致后台发布内容报「写盘失败」。具名卷由 Docker 管理属主，免去 chown。
+确实需要直接看宿主目录时再换回绑定挂载，并先执行：
+
+```bash
+mkdir -p server/storage && sudo chown -R 1000:1000 server/storage
+```
+
+**必须单实例部署。** 内容与撤销都写在本地磁盘，且热更新只作用于**当前进程**；
+用 `--scale` 扩容会让多个实例各读各的，表现为「后台改完内容，一部分用户的请求仍返回旧内容」
+且难以排查。要真正扩容，需改成共享存储（挂同一卷或用对象存储）并加「内容变更后广播刷新」。
+
+**平台适配提醒**：托管平台若**不支持持久化卷**（很多单容器 PaaS 都不支持），
+`storage/` 会随每次重新部署被清空 —— 后台改的内容与审计日志全部丢失。
+上线前务必确认平台是否提供持久磁盘；若没有，需要把 `content.json` 与审计日志改存对象存储或数据库。
+
+---
+
 ## 部署
+
+> 仓库已配好 GitHub Actions 流水线（校验 → 构建镜像推 GHCR → 可选上传小程序体验版）。
+> 若走 CI/CD，见 **`docs/github-actions-deploy.md`**；下面是本地手动部署的方式。
 
 ```bash
 # 构建（注意上下文是项目根目录）
@@ -243,6 +435,10 @@ docker compose -f server/docker-compose.yml up -d
 **反向代理必须关掉响应缓冲**，否则 SSE 会攒成一次性返回，流式效果消失：
 
 ```nginx
+# 单 IP 对话限流（服务端另有一层，这里是第二道，也是多实例下唯一有效的一道）
+limit_req_zone $binary_remote_addr zone=chat:10m rate=20r/m;
+limit_req_zone $binary_remote_addr zone=api:10m  rate=60r/m;
+
 location /api/agent/ {
     proxy_pass http://127.0.0.1:8787;
     proxy_http_version 1.1;
@@ -251,6 +447,53 @@ location /api/agent/ {
     proxy_cache off;
     chunked_transfer_encoding off;
     proxy_read_timeout 120s;      # 大模型首字可能较慢
+
+    # 必须覆写，否则客户端可自带 X-Forwarded-For 绕过限流与登录锁定
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+
+    limit_req zone=chat burst=5 nodelay;
+    limit_req_status 429;
+}
+
+# 内容下发：小程序启动时会请求，建议允许缓存但按版本号区分
+location /api/content {
+    proxy_pass http://127.0.0.1:8787;
+    proxy_http_version 1.1;
+    proxy_set_header Connection '';
+    client_max_body_size 4m;
+
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    limit_req zone=api burst=20 nodelay;
+    limit_req_status 429;
+}
+
+# 管理后台：建议再加一层 IP 白名单 / Basic Auth
+location /api/admin/ {
+    proxy_pass http://127.0.0.1:8787;
+    proxy_http_version 1.1;
+    proxy_set_header Connection '';
+    client_max_body_size 4m;
+
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+
+    # allow 203.0.113.0/24; deny all;   # 按需打开
+}
+
+location /admin {
+    proxy_pass http://127.0.0.1:8787;
+    proxy_http_version 1.1;
+}
+
+# /health 会暴露 provider、模型名、索引规模、会话数等运行信息，
+# 建议只对内网 / 平台健康检查开放，对外拒绝：
+location /health {
+    allow 127.0.0.1;
+    allow 10.0.0.0/8;
+    deny all;
+    proxy_pass http://127.0.0.1:8787;
 }
 ```
 
@@ -258,15 +501,51 @@ location /api/agent/ {
 
 ## 小程序端接入
 
-1. `utils/config.js` 把 `API_BASE` 改成你的 HTTPS 域名；
-2. 微信公众平台 → 开发 → 开发设置 → 服务器域名，把该域名加进 **request 合法域名**；
+1. `utils/config.js` 把 `API_BASE_PROD` 改成你的 HTTPS 域名。
+   该文件按环境版本自动选地址：开发者工具用 `API_BASE_DEVTOOLS`（127.0.0.1）、
+   体验版用 `API_BASE_LAN`（开发机局域网 IP）、正式版用 `API_BASE_PROD`，
+   避免上线前把调试地址带上正式包；
+2. 微信公众平台 → 开发 → 开发设置 → 服务器域名，把该域名加进 **request 合法域名**。
+   注意该域名必须**已在工信部备案**，且不能带非标准端口；
 3. 端上逻辑在 `utils/agent-remote.js`，链路优先级：
 
 ```
-本地医疗红线硬拦截（不发网络） → 用户关闭 AI / 熔断中 → 服务端 Agent → 失败回落本地规则引擎
+本地医疗红线硬拦截（不发网络） → 未单独同意 AI / 用户关闭 / 熔断中 → 服务端 Agent → 失败回落本地规则引擎
 ```
 
+**AI 增强默认关闭，且必须单独同意**：首次在对话页开启时会弹出授权说明；
+同意前 `store.getAiEnabled()` 恒为 false —— 即使本地残留着旧版本的开关状态，
+也不会发出任何网络请求。这是敏感个人信息（体质 / 健康）向第三方模型传输的合规要求，不是可选项。
+上行字段只包含体质类型与 `risk` 三个布尔标记，原始填报值不出端（见上文「隐私」章节）。
+
 连续失败 2 次触发 60 秒熔断，避免每次发言都先卡一个超时；用户也可以在对话页顶部一键切回「本地模式」，此时零网络请求。
+
+### 内容下发（`utils/content-client.js`）
+
+`app.js` 启动时两步走，都不阻塞渲染：
+
+```
+onLaunch
+ ├─ bootstrap()  同步：把上次缓存的 content.json 就地覆盖到 data/*.js
+ │                      （必须同步，否则首屏拿到的还是内置数据）
+ └─ setup()      异步：GET /api/content?version=N
+                        ├─ unchanged → 什么都不做
+                        ├─ 有新版本 → 先落 Storage 再 apply，立即生效
+                        └─ 失败/超时 → 静默保持现有内容，用户无感
+```
+
+降级是全覆盖的：服务端不可达、缓存 JSON 损坏、payload 结构不对、Storage 写失败 ——
+任何一种情况都只表现为「内容没更新」，不会报错、不会白屏。用户关闭 AI 增强时，
+内容拉取也一并跳过，与对话链路的隐私承诺保持一致。
+
+**生效时机**：已打开的页面不会自动重绘。需要即时刷新的页面实现
+`onContentUpdate(info)` 即可被回调（`content-client.js` 的 `notifyPages`）。
+未实现的页面在下次进入时自然读到新内容。
+
+**一个连带的加固**：内容可远程删除后，用户本机的历史体质档案可能指向已删掉的体质。
+原先 11 处展示路径直接写 `constitutions.get(id).name`，会抛异常导致白屏；
+现在统一走 `getOr(id)`（未知 id 返回「未知体质」占位对象），
+只有「校验 id 是否合法」的场景才用严格的 `get(id)`。
 
 ---
 
@@ -275,21 +554,44 @@ location /api/agent/ {
 ```
 server/
 ├── src/
-│   ├── index.js      HTTP 路由 + Agent 编排主循环
-│   ├── llm.js        OpenAI 兼容客户端（流式解析 / tool_calls 增量拼接 / 超时）
-│   ├── prompt.js     Agent 系统提示词 + 运行时上下文注入
-│   ├── tools.js      7 个 Function Call 定义与执行器
-│   ├── rag.js        切块 / TF-IDF / 向量 / 融合重排
-│   ├── corpus.js     知识语料构建（复用 ../data）
-│   ├── safety.js     双层风控 + 流式净化 + 审计留痕
-│   ├── session.js    多轮上下文，滑动窗口 + TTL 回收
-│   └── config.js     环境变量
+│   ├── index.js          HTTP 路由 + Agent 编排主循环
+│   ├── llm.js            OpenAI 兼容客户端（流式解析 / tool_calls 增量拼接 / 超时）
+│   ├── prompt.js         Agent 系统提示词 + 运行时上下文注入
+│   ├── tools.js          7 个 Function Call 定义与执行器（定义随内容版本惰性重建）
+│   ├── rag.js            切块 / TF-IDF / 向量 / 融合重排
+│   ├── corpus.js         知识语料构建（复用 ../data）
+│   ├── safety.js         双层风控 + 流式净化 + 审计留痕（内存 + 落盘双写）
+│   ├── session.js        多轮上下文，滑动窗口 + TTL 回收
+│   ├── config.js         环境变量
+│   ├── content.js        内容中心：持久化 / 校验 / 发布 / 回滚 / 版本号
+│   ├── content-schema.js 字段描述 + 三重校验（结构 / 合规 / 交叉引用）
+│   ├── admin.js          管理接口 + 令牌鉴权 + 登录限流
+│   ├── audit-store.js    审计日志落盘（JSONL 按天切分 + 过期清理）
+│   ├── ratelimit.js      公开接口 IP 限流（固定窗口，防大模型额度被刷爆）
+│   └── http-util.js      响应封装 / 请求体读取 / CORS 头 / 客户端 IP
+├── public/
+│   └── admin.html        单文件管理后台（零依赖原生 JS，表单由 schema 驱动）
 ├── scripts/
-│   ├── check-llm.js  大模型连通性自检（Key / 模型 / Function Call / 思考开关）
-│   ├── eval.js       离线评测（检索 / 风控 / 事实一致性）
-│   ├── build-index.js 构建索引与向量缓存
-│   └── mock-llm.js   离线 Mock 模型（仅本地联调，可模拟豆包思考输出）
+│   ├── check-llm.js      大模型连通性自检（Key / 模型 / Function Call / 思考开关）
+│   ├── eval.js           离线评测（检索 / 风控 / 事实一致性）
+│   ├── build-index.js    构建索引与向量缓存
+│   ├── mock-llm.js       离线 Mock 模型（仅本地联调，可模拟豆包思考输出）
+│   └── smoke-*.js        六个回归自检（覆盖层 / 校验 / 内容中心 / 管理接口 / 端上链路 / 安全边界）
+├── storage/              运行时数据：内容库 + 审计日志（不进仓库，需挂 volume）
 ├── Dockerfile / docker-compose.yml / .env.example
+```
+
+小程序端新增/改动：
+
+```
+utils/content-overlay.js   共享的内容覆盖层（端服共用，纯逻辑）
+utils/content-client.js    端上拉取与缓存（bootstrap 同步 / refresh 异步）
+utils/agent-remote.js      上行档案最小化（minimalProfile：只传体质类型 + 风险标记）
+utils/store.js             AI 增强默认关闭 + 单独同意标记（tl_ai_consent_v1）
+utils/config.js            按环境版本自动选 API 地址（开发 / 体验 / 正式三轨）
+app.js                     onLaunch 里接上内容初始化
+data/*.js                  五个数据模块各加一个 applyOverride()
+utils/engine.js            MAX_SCORE 改为可重算（reload()）
 ```
 
 运行时零第三方依赖，只用 Node 内置 `http` / `fetch` / `ReadableStream`。

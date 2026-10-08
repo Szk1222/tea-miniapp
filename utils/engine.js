@@ -8,9 +8,17 @@ const teas = require('../data/teas.js');
 const questions = require('../data/questions.js');
 
 /* ---------- 每套体质的理论最高分（用于计算倾向度百分比） ---------- */
-const MAX_SCORE = (function () {
-  const max = {};
-  constitutions.ids.forEach(function (id) { max[id] = 0; });
+const MAX_SCORE = {};
+
+/**
+ * 重算理论最高分。
+ * 量表或体质库被管理后台的内容覆盖后必须调用，否则 MAX_SCORE 仍是内置数据的
+ * 结果，percentOf 会算出偏离 100% 的百分比。
+ * @returns {object} 体质 id → 理论最高分
+ */
+function reload() {
+  Object.keys(MAX_SCORE).forEach(function (k) { delete MAX_SCORE[k]; });
+  constitutions.ids.forEach(function (id) { MAX_SCORE[id] = 0; });
   questions.list.forEach(function (q) {
     const per = {};
     q.options.forEach(function (o) {
@@ -19,11 +27,12 @@ const MAX_SCORE = (function () {
       });
     });
     Object.keys(per).forEach(function (k) {
-      max[k] = (max[k] || 0) + per[k];
+      MAX_SCORE[k] = (MAX_SCORE[k] || 0) + per[k];
     });
   });
-  return max;
-})();
+  return MAX_SCORE;
+}
+reload();
 
 /* ---------- 评分 ---------- */
 function score(answers) {
@@ -219,6 +228,7 @@ function constitutionByKeyword(text) {
 
 module.exports = {
   MAX_SCORE: MAX_SCORE,
+  reload: reload,
   score: score,
   resolve: resolve,
   analyze: analyze,

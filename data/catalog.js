@@ -42,10 +42,15 @@ const ITEMS = [
 ];
 
 const NAME_SET = {};
-ITEMS.forEach(function (i) {
-  NAME_SET[i.name] = i;
-  if (i.alias) NAME_SET[i.alias] = i;
-});
+
+function rebuildSet() {
+  Object.keys(NAME_SET).forEach(function (k) { delete NAME_SET[k]; });
+  ITEMS.forEach(function (i) {
+    NAME_SET[i.name] = i;
+    if (i.alias) NAME_SET[i.alias] = i;
+  });
+}
+rebuildSet();
 
 /** 归一化食材名（茶方里可能带「（干）」这类后缀） */
 function normalize(name) {
@@ -65,10 +70,26 @@ function has(name) {
   return !!find(name);
 }
 
+/**
+ * 内容覆盖：就地改写 ITEMS（药食同源白名单）并重建名称索引。
+ * @param {Array|{items:Array}} next 目录条目；非法或为空时保持原样
+ * @returns {number} 覆盖后的条数
+ */
+function applyOverride(next) {
+  const items = Array.isArray(next) ? next : (next && next.items);
+  if (!Array.isArray(items) || !items.length) return ITEMS.length;
+  ITEMS.length = 0;
+  Array.prototype.push.apply(ITEMS, items);
+  rebuildSet();
+  module.exports.total = ITEMS.length;
+  return ITEMS.length;
+}
+
 module.exports = {
   items: ITEMS,
   total: ITEMS.length,
   has: has,
   find: find,
-  normalize: normalize
+  normalize: normalize,
+  applyOverride: applyOverride
 };

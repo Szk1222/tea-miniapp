@@ -188,7 +188,7 @@ function respond(input, ctx) {
   /* 5. 查询我的体质 */
   if (MY_TYPE_RE.test(text)) {
     if (state.profile && state.profile.constitutionId) {
-      const c = constitutions.get(state.profile.constitutionId);
+      const c = constitutions.getOr(state.profile.constitutionId);
       messages.push(t('根据你上次的测评，主导体质是「' + c.name + '」，' + state.profile.levelText + '。'));
       messages.push(t(c.brief + '\n\n调理思路：' + c.principle));
       const list = engine.recommend(c.id, { season: engine.seasonOf(), limit: 2 });
@@ -292,7 +292,7 @@ function respond(input, ctx) {
       if (tags.indexOf('skin') > -1) tips.push('气色与皮肤状态更依赖作息，建议先把入睡时间提前半小时，再配合温和茶饮。');
       if (tags.indexOf('tired') > -1) tips.push('容易疲乏时，补气类茶方建议小量长期，而不是一次加足量。');
       if (tags.indexOf('dry') > -1) tips.push('口干咽燥时，优先选择麦冬、玉竹、百合这类甘润食材，避免过烫饮用。');
-      const c = constitutions.get(cid);
+      const c = constitutions.getOr(cid);
       messages.push(t('结合你说的「' + cleanKeyword(text) + '」，方向上还是偏「' + c.name + '」的调理思路。'));
       if (tips.length) messages.push(t(tips.join('\n\n')));
       return finishRecommend(messages, state, cid, {
@@ -322,7 +322,7 @@ function respond(input, ctx) {
 
 function finishRecommend(messages, state, cid, opt) {
   opt = opt || {};
-  const c = constitutions.get(cid);
+  const c = constitutions.getOr(cid);
   const list = engine.recommend(cid, {
     season: opt.season || engine.seasonOf(),
     limit: opt.limit || 2,
@@ -368,7 +368,7 @@ function finishRecommend(messages, state, cid, opt) {
 function welcome(state) {
   const msgs = [];
   if (state.profile && state.profile.constitutionId) {
-    const c = constitutions.get(state.profile.constitutionId);
+    const c = constitutions.getOr(state.profile.constitutionId);
     msgs.push(t('欢迎回来。你的体质档案是「' + c.name + '」，今天是' + engine.seasonName(engine.seasonOf()) + '。'));
     msgs.push(t('想聊点什么？可以问我当季该喝什么，也可以直接说最近的身体感受。'));
   } else {
