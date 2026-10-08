@@ -139,7 +139,10 @@
   → `needs` → `image`（推 GHCR）与 `miniprogram`（传体验版）。
   **放一个文件用 `needs` 而不是拆多个 workflow**：「校验不过就不发布」由依赖图保证，不靠约定
 - 触发：push master → verify+image；tag `v*` → 再加 miniprogram；PR → 只 verify；
-  手动触发可勾选上传。顶层 `on.push.paths` 排除了 `.workbuddy/`、`docs/`，避免无意义构建
+  手动触发可勾选上传。顶层用 `on.push.paths` **白名单**（只列 `pages/**`、`server/**`、
+  `utils/**`、`app.js` 等真正影响产物的路径），因此改 `docs/`、`.workbuddy/` 不会空跑 CI。
+  **注意是白名单不是 `paths-ignore`**：新增源码目录时必须同步加进白名单，否则改动不触发构建。
+  已实测：提交 `.workbuddy/memory/*.md` 后运行总数仍为 1，未产生新运行
 - **镜像地址 `ghcr.io/szk1222/chalifang-agent`**。仓库名 `-` 不是合法 Docker 镜像名
   （分隔符两侧必须都有字母数字），所以不用 `<owner>/<repo>`；GHCR 还要求全小写，
   owner `Szk1222` 必须转小写
