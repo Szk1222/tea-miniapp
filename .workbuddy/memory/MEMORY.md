@@ -2,6 +2,7 @@
 
 ## 项目路径（2026-10-08 迁移）
 - 项目根：**`D:\Projects\tea-miniapp`**（原 `C:\Users\25823\WorkBuddy\tea 小程序`，已迁移并清除）
+- **GitHub 仓库**：`https://github.com/Szk1222/tea-miniapp`（**私有**；原名 `Szk1222/-`，`-` 是占位符已改名）
 - **不要放在 `D:\WorkBuddy\` 下** —— 那是 WorkBuddy 应用的安装目录（含 WorkBuddy.exe / resources /
   卸载程序），升级或卸载有连带清除风险
 - 目录名改用 ASCII `tea-miniapp`；微信开发者工具 / WorkBuddy 工作区均需按新路径重新打开
@@ -133,6 +134,45 @@
 - 反向代理必须 `proxy_set_header X-Forwarded-For $remote_addr;` 覆写，
   否则客户端可自带该头绕过限流与登录锁定
 
+## CI / CD（GitHub Actions）
+- 单一工作流 `.github/workflows/ci-deploy.yml`：`verify`（语法/JSON/密钥防线/npm test）
+  → `needs` → `image`（推 GHCR）与 `miniprogram`（传体验版）。
+  **放一个文件用 `needs` 而不是拆多个 workflow**：「校验不过就不发布」由依赖图保证，不靠约定
+- 触发：push master → verify+image；tag `v*` → 再加 miniprogram；PR → 只 verify；
+  手动触发可勾选上传。顶层 `on.push.paths` 排除了 `.workbuddy/`、`docs/`，避免无意义构建
+- **镜像地址 `ghcr.io/szk1222/chalifang-agent`**。仓库名 `-` 不是合法 Docker 镜像名
+  （分隔符两侧必须都有字母数字），所以不用 `<owner>/<repo>`；GHCR 还要求全小写，
+  owner `Szk1222` 必须转小写
+- `latest` 标签**不要用 `{{is_default_branch}}`** —— 取决于仓库默认分支设置，
+  不一致时会静默永不产出。显式写 `enable=${{ github.ref == 'refs/heads/master' || ... }}`
+- 小程序上传 `.github/scripts/upload-miniprogram.js`：用 API 而非 CLI 长参数；
+  `require('miniprogram-ci')` 必须排在环境校验**之后**（否则依赖缺失时 MODULE_NOT_FOUND 盖住真因）；
+  装在全局，靠 `NODE_PATH=$(npm root -g)` 解析（装项目内会落进上传目录）
+- 上传密钥走 `Secrets.MINIPROGRAM_PRIVATE_KEY`（密钥文件的 base64 单行文本）。
+  **IP 白名单是最大的坑**：GitHub 托管 runner 出口 IP 动态（Azure 段），
+  密钥一开白名单**必然上传失败** —— 要么关白名单，要么自托管 runner
+- 详细说明见 `docs/github-actions-deploy.md`
+- **已实测跑通**（2026-10-08，run #37762801471，push 触发，全程约 1 分钟）：
+  verify 14s ✅ / image 47s ✅（产出 `latest` + `master` + `sha-<短哈希>`）/ miniprogram 按设计 skipped
+- **无 `gh` CLI 时用 REST API 反查运行态**（PAT 需 `Actions: read`）：
+  `GET /repos/{o}/{r}/actions/runs` → run id →
+  `GET .../runs/{id}/jobs` → job id + 每步 conclusion →
+  `GET /repos/{o}/{r}/actions/jobs/{id}/logs`（**要 `curl -L`** 跟随重定向）→ grep 实际产物
+  - 读日志要分清「流程文件里的 echo 模板行」与「实际输出」——前者也会被 grep 命中
+  - `GET /user/packages` 需 `read:packages`，未授予时返回
+    `Resource not accessible by personal access token`，**这是权限边界不是故障**，
+    该走作业日志核实镜像标签
+
+## 推送凭证（重要）
+- 本机无 `gh` CLI；`credential.helper` 指向 Git Credential Manager 2.9.0，
+  **在无交互环境下会一直挂起等输入**（`GIT_TERMINAL_PROMPT=0` + `GIT_ASKPASS=echo` 也拦不住）
+- 因此**推送必须由用户提供 PAT**，用内联 helper 走进程环境变量（见「踩过的坑」）
+- **PAT 必须同时有 `Contents: Read and write` + `Workflows: Read and write`**：
+  推送 `.github/workflows/` 下的文件时，缺 workflow 权限会被拒
+  （`refusing to allow a Personal Access Token to create or update workflow`）
+- 判定仓库是否私有：`git -c credential.helper= ls-remote origin`
+  → `Invalid username or token` 即私有
+
 ## 踩过的坑（务必不要再犯）
 1. **正则 g 标志**：`/x/g.test(s)` 会推进 lastIndex 造成随机漏检 → 词表一律用纯字符串数组
 2. **流式内容净化的边界**：固定 holdback 无法消除跨 chunk 漏检，必须用「安全前缀」回退判定
@@ -165,6 +205,17 @@
     跑完真实链路后遍历运行时可写目录逐文件 `indexOf` 搜哨兵。
     注意区分「固定模板文案」与「用户数据」——`audit-*.jsonl` 里的「孕期」来自
     `flag_risk` 的提示模板，不是用户填报值，别误报
+11. **YAML 块标量里的 `#` 是字面内容，不是注释**：`tags: |` 里写注释会被当成一个标签
+    传给 metadata-action。注释要放在块标量**外面**
+12. **CI 的 `run:` 脚本要在本地实跑一遍**：YAML 合法 ≠ 脚本能跑。
+    把脚本体原样在 Git Bash 执行，本次就是这样确认三段脚本在 `set -euo pipefail` 下都正常。
+    另外 `[ -z "$x" ] && x=...` 在 `set -e` 下会因返回非零而直接退出，必须写成 `if` 语句
+13. **扫「密钥是否泄漏」时，别把关键词本身当命中**：`grep -rn github_pat_ .` 会命中
+    自己写进文档/日志的 **sed 脱敏规则字面量**（`s/github_pat_[A-Za-z0-9_]*/<TOKEN>/g`）
+    和 CI 流程文件里的 `echo "::error::..."` 模板文本，造成误报。
+    判断泄漏要搜**真实值前缀**（即「能被拿去用的那一整串」），而不是「描述这类东西的词」。
+    推论：**写进记忆文件的也应该是「怎么判别」而不是被判别物本身** ——
+    把密钥/令牌的前几位抄进 md 属于自造泄漏面，一律不写
 
 ## 服务端 · 第三轮：接豆包（火山方舟）
 - 已接真实豆包并端到端联调通过：端点 `https://ark.cn-beijing.volces.com/api/v3`，模型 `doubao-seed-2-1-lite-260915`（账号已开通）
