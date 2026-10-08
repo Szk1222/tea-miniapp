@@ -62,18 +62,30 @@ echo "<只有 read:packages 权限的 PAT>" | docker login ghcr.io -u Szk1222 --
 公众平台 → **开发管理 → 开发设置 → 小程序代码上传 → 生成密钥** → 下载得到
 `private.wxda7a648bda4e9cfa.key`（**只能下载一次，丢了只能重新生成**）。
 
-**第二步：转成 base64 单行文本**
+**第二步：取值（两种都可以，脚本会自动识别）**
+
+`private.wxXXXX.key` 的内容**本身就是 PEM 文本**：「-----BEGIN RSA PRIVATE KEY-----」
++ 多行 base64 + 「-----END RSA PRIVATE KEY-----」，约 1.6 KB。
+
+| 方式 | 命令 | 说明 |
+|---|---|---|
+| **a. base64（推荐）** | 见下方命令块 | 单行，最不易出错 |
+| **b. 直接粘原文** | 用编辑器打开 `.key`，全选复制 | 少一步转换；换行会被自动规整为 LF |
 
 ```bash
-# macOS / Linux
-base64 -w0 private.wxda7a648bda4e9cfa.key
+# Git Bash / macOS / Linux，产物直接进剪贴板
+base64 -w0 private.wxda7a648bda4e9cfa.key | clip
 
 # macOS（老版本 base64 不认 -w）
-base64 -i private.wxda7a648bda4e9cfa.key
+base64 -i private.wxda7a648bda4e9cfa.key | pbcopy
 
-# Windows PowerShell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("private.wxda7a648bda4e9cfa.key"))
+# Windows PowerShell，产物直接进剪贴板
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("private.wxda7a648bda4e9cfa.key")) | Set-Clipboard
 ```
+
+> 用 `| clip` / `| pbcopy` 让值**只经过剪贴板**，不落到终端回滚缓冲里。
+> 另外别用 `certutil -encode` —— 它会给结果套上 BEGIN/END 包裹并分行；流水线能识别，
+> 但没有必要绕这一圈。
 
 **第三步：写入仓库 Secret**
 
@@ -81,9 +93,13 @@ base64 -i private.wxda7a648bda4e9cfa.key
 
 | 名称 | 值 |
 |---|---|
-| `MINIPROGRAM_PRIVATE_KEY` | 上一步输出的 base64 单行文本 |
+| `MINIPROGRAM_PRIVATE_KEY` | 第二步得到的 base64 单行文本（或 `.key` 的原文） |
 
 > ⚠️ **不要**把 `.key` 文件本身提交进仓库。密钥只在 runner 的临时目录出现，工作流结束即销毁。
+
+**验证密钥是否送达**：流水线的「还原上传密钥」步骤会打印还原出的文件结构 —— 字节数、PEM 标签、
+以及 **sha256**。在本地执行 `sha256sum private.wxda7a648bda4e9cfa.key` 与之对照，
+一致即说明 Secret 内容正确无误。
 
 ### 2.3 ⚠️ IP 白名单（最容易卡住的一步）
 
@@ -196,8 +212,10 @@ Docker 仓库名的规则是「分隔符两侧必须都有字母数字」，单�
 | 现象 | 原因 | 处理 |
 |---|---|---|
 | `invalid ip, not in whitelist` | 上传密钥开了 IP 白名单 | 关闭白名单，或改自托管 runner |
-| `未配置 Secrets.MINIPROGRAM_PRIVATE_KEY` | Secret 没加或名字拼错 | 按 §2.2 添加 |
-| `密钥解码为空` | Secret 内容不是 base64，或带了换行/说明文字 | 只粘贴 base64 单行文本 |
+| `Secrets.MINIPROGRAM_PRIVATE_KEY 未配置或为空` | Secret 没加或名字拼错 | 按 §2.2 添加 |
+| `无法识别 Secret 的内容形态` | 粘了半截、夹带说明文字，或含 HTML 转义字符 | 只粘 base64 单行文本，或 `.key` 全文 |
+| `base64: invalid input`（旧版脚本的报错） | 把 `.key` **原文**粘进了 Secret，脚本却按 base64 解 | 已修：`decode-key.js` 会自动识别原文形态，直接重跑即可 |
+| 上传阶段才报密钥错误 | 内容能落盘，但不是这把 AppID 的密钥 | 用日志里打印的 sha256 与本地 `sha256sum private.wxXXXX.key` 对照 |
 | `✗ 未提供版本号` | 手动触发没填 version，且不是 tag 推送 | 打 tag 或填 version |
 | GHCR 推送 403 | 工作流缺 `packages: write` | 已在该 job 的 `permissions` 中声明；若仍失败，检查仓库 Settings → Actions 的 Workflow permissions |
 | 服务器 `docker pull` 401 | 私有镜像未登录 | 按 §2.1 执行 `docker login ghcr.io` |

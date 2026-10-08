@@ -9,7 +9,10 @@
 #   手动 workflow_dispatch → 校验 + 推送镜像；勾选 upload_miniprogram 则一并上传小程序
 #
 # 需要配置的 Secrets（Settings → Secrets and variables → Actions）：
-#   MINIPROGRAM_PRIVATE_KEY  小程序代码上传密钥文件的 base64（仅上传体验版时需要）
+#   MINIPROGRAM_PRIVATE_KEY  小程序代码上传密钥（仅上传体验版时需要）。两种都可以：
+#                            a) 密钥文件的 base64 单行文本（推荐）
+#                            b) 密钥文件的原始文本内容（以 -----BEGIN 开头）
+#                            由 .github/scripts/decode-key.js 自动识别
 #
 # GITHUB_TOKEN 由 Actions 自动提供，推送 GHCR 用它即可，无需自建 PAT。
 
@@ -195,25 +198,18 @@ jobs:
           node-version: '20'
 
       # 密钥只在 runner 的临时目录出现，工作流结束后随之销毁；
-      # 不写入仓库、不打印到日志（printf 到文件，不回显内容）
-      - name: 写入上传密钥
+      # 不写入仓库、不打印到日志（只打印结构特征与 sha256，不回显内容）
+      #
+      # 为什么不用 `base64 -d` 一句话搞定：微信下载的 .key **本身就是 PEM 文本**，
+      # 若 Secret 里粘的是文件原文，`base64 -d` 只会甩一句 `base64: invalid input`，
+      # 完全看不出「其实是把原文贴上来了」。decode-key.js 识别四种形态
+      #（base64 / 原文 / certutil 产物 / url-safe），并把 sha256 打进日志供与本地对照。
+      - name: 还原上传密钥
         env:
           MP_PRIVATE_KEY: ${{ secrets.MINIPROGRAM_PRIVATE_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${MP_PRIVATE_KEY}" ]; then
-            echo "::error::未配置 Secrets.MINIPROGRAM_PRIVATE_KEY"
-            echo "请在 仓库 Settings → Secrets and variables → Actions 添加该 Secret，"
-            echo "值为上传密钥文件的 base64 单行文本（base64 -w0 private.wxXXXX.key）。"
-            exit 1
-          fi
-          mkdir -p "$RUNNER_TEMP/mp"
-          printf '%s' "$MP_PRIVATE_KEY" | base64 -d > "$RUNNER_TEMP/mp/private.key"
-          if [ ! -s "$RUNNER_TEMP/mp/private.key" ]; then
-            echo "::error::密钥解码为空，请确认 Secret 内容是密钥文件的 base64，且为单行"
-            exit 1
-          fi
-          chmod 600 "$RUNNER_TEMP/mp/private.key"
+          node .github/scripts/decode-key.js "$RUNNER_TEMP/mp/private.key"
           echo "MP_KEY_PATH=$RUNNER_TEMP/mp/private.key" >> "$GITHUB_ENV"
 
       # 装在全局而不是项目内：项目内的 node_modules/ 会落进上传目录，
