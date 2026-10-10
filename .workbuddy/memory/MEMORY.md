@@ -1,303 +1,110 @@
 # 茶历方 小程序 · 项目长期记忆
 
-## 项目路径（2026-10-08 迁移）
-- 项目根：**`D:\Projects\tea-miniapp`**（原 `C:\Users\25823\WorkBuddy\tea 小程序`，已迁移并清除）
-- **GitHub 仓库**：`https://github.com/Szk1222/tea-miniapp`（**私有**；原名 `Szk1222/-`，`-` 是占位符已改名）
-- **不要放在 `D:\WorkBuddy\` 下** —— 那是 WorkBuddy 应用的安装目录（含 WorkBuddy.exe / resources /
-  卸载程序），升级或卸载有连带清除风险
-- 目录名改用 ASCII `tea-miniapp`；微信开发者工具 / WorkBuddy 工作区均需按新路径重新打开
-- 迁移方式：`robocopy /E` 复制 → 文件数 + 字节数 + **逐文件 SHA256** + 目录结构四重校验 → 才清理源
+> 详细过程性记录见 `.workbuddy/memory/YYYY-MM-DD.md`；本文件只保留跨会话必须遵守的结论与铁律。
 
-## 品牌与定位
-- 小程序名称：**茶历方**（原名 tealife，因与已有公众号重名而更换；中间曾用过「茶³」，
-  最终确定为「茶历方」）
-- **命名规范**：用户可见文案一律用中文「茶历方」；技术标识符（Docker 镜像名 / npm 包名 /
-  开发者工具 projectname）用 ASCII 代号 `chalifang`。**镜像名、包名不可用中文或上标字符**，
-  否则 docker build / npm 直接失败
-- 客服邮箱占位符：`chalifang-support@example.com`（**上线前必须换成真实邮箱**）
-- 产品定位：中医体质养生茶推荐微信小程序 —— 「辨证施茶 · 一人一方」
-- 核心逻辑：九种中医体质判定 → 按体质 + 当季 + 场景匹配药食同源茶方
-
-## 设计规范（务必沿用）
-- 主色 `#2E6B4F`（茶青绿），深色 `#21503A`，浅底 `#E8F1EC`；辅色暖金 `#B9873A`
-- 背景 `#F5F7F4`，卡片 `#FFFFFF`，主文字 `#17251D`，次文字 `#5A6A61`，弱文字 `#93A099`，描边 `#E9EDE8`
-- 圆角：卡片 28rpx、按钮 999rpx；阴影克制（`0 6rpx 24rpx rgba(28,56,41,.06)`）
-- **统一线性 SVG 图标，禁止使用 Emoji**。图标经 `utils/icons.js` 生成 data-uri，
-  由 `components/icon` 通过 `background-image` 渲染（兼容性优于 `<image src=svg>`）
-- 中文界面，字号 28rpx 基准，正文行高 1.6–1.8
-- **胶囊/标签类样式禁止挂在行内 `<text>` 上**：`<text>` 不认垂直内边距，会被压扁。
-  一律用 `<view>` + 固定 `height` + `line-height`（垂直居中）+ `text-align`（水平居中）+ `white-space: nowrap`
-- **多列网格写法（真机兼容铁律）**：
-  ```css
-  .grid { display:flex; flex-direction:row; flex-wrap:wrap; justify-content:space-between; }
-  .cell { box-sizing:border-box; width:48.4%; flex:0 0 auto; margin-bottom:18rpx; }
-  ```
-  即：**不用 `calc(50% - Nrpx)`**（部分安卓 WebView 上 rpx 参与 calc 会导致整条 width 失效）、
-  **不用 flex `gap`**（老 WebView 不支持，改 `margin` 或 `space-between`）、
-  **`box-sizing` 必须显式写在元素自己的规则里**，不能依赖 app.wxss 的全局规则
-  —— 已用 headless Chrome 实证：`box-sizing` 不生效（content-box）是"两列挤成一列"的唯一成因
-- **布局争议先复现再改**：`preview/grid-fix-check.html` 是对照样例；
-  套路 = 用 `require` 引真实 `data/*.js` 生成 HTML（rpx ×0.5 转 px）→
-  `chrome.exe --headless=new --screenshot=out.png file:///...` → 直接读图核对
-- **真机渲染约定**：胶囊/标签用 `<view>`（见「踩过的坑 5」）；「图标 + 文字」间距用 margin
-  （见「踩过的坑 6」）；底部固定条的主按钮 `min-width: 0` + `overflow: hidden` + 文字省略号兜底
+## 项目
+- 根目录 `D:\Projects\tea-miniapp`（**勿放 `D:\WorkBuddy\`**，那是应用安装目录）。仓库 `github.com/Szk1222/tea-miniapp`（私有）。
+- 品牌「茶历方」：用户可见文案用中文；技术标识符（镜像名/包名/projectname）用 ASCII `chalifang`（不可用中文或上标字符）。
+- 客服邮箱占位 `chalifang-support@example.com`，**上线前必换**。
+- 定位：中医体质养生茶推荐小程序「辨证施茶 · 一人一方」。9 体质判定 → 体质 + 当季 + 场景匹配药食同源茶方。
 
 ## 技术约定
-- 原生微信小程序，无第三方依赖；自定义 tabBar（`custom: true`）以便使用 SVG 图标
-- 体质判定与茶方匹配**必须走硬规则**（`utils/engine.js`），不做生成式判定
-- 体质判定用「相对倾向度 raw/理论最高分」比较，不可用原始分（否则会偏向平和质）
-- 对话能力在 `utils/agent.js`：规则意图识别 + 文案模板；改文案改这里
-- 本地存储统一走 `utils/store.js`，key 前缀 `tl_`
+- 原生微信小程序，零第三方依赖；自定义 tabBar（`custom: true`）以便使用 SVG 图标。
+- 体质判定/茶方匹配**必须走硬规则** `utils/engine.js`，不做生成式判定；倾向度用 raw/理论最高分，不用原始分（否则偏向平和质）。
+- 对话文案在 `utils/agent.js`；本地存储统一 `utils/store.js`（key 前缀 `tl_`）。
+- 展示类取体质一律 `constitutions.getOr(id)`（未知 id 返回占位对象）；`get(id)` 严格返回 null，**仅用于校验合法性**。
+- `utils/config.js` 按环境三轨选 API：`API_BASE_DEVTOOLS`(127.0.0.1:8787) / `API_BASE_LAN`(trial 真机, 192.168.31.37:8787) / `API_BASE_PROD`(HTTPS + 已备案)。**改地址改这三处，不要直接改 `API_BASE`**。
+- 打包白名单 `project.config.json` → `packOptions.ignore`：已排除 preview / server / docs / .workbuddy / *.md。**`server/.env` 含明文密钥，漏排即泄漏**。
+
+## 设计规范
+- 主色 `#2E6B4F`、深 `#21503A`、浅底 `#E8F1EC`、辅金 `#B9873A`；底 `#F5F7F4`、卡 `#FFFFFF`、主文 `#17251D`、次文 `#5A6A61`、弱文 `#93A099`、描边 `#E9EDE8`。
+- 圆角：卡片 28rpx / 按钮 999rpx；阴影 `0 6rpx 24rpx rgba(28,56,41,.06)`。中文 UI，基准 28rpx，行高 1.6–1.8。
+- 图标统一线性 SVG（`utils/icons.js` 生成 data-uri，`components/icon` 用 `background-image` 渲染），**禁用 Emoji**。
+- **真机渲染铁律**：
+  - 胶囊/标签用 `<view>`（固定 `height` + `line-height` 居中 + `text-align` + `nowrap`），**禁用行内 `<text>` 承载**（不认垂直内边距，会被压扁）。
+  - 多列网格：容器 `display:flex; flex-wrap:wrap; justify-content:space-between`，单元格 `box-sizing:border-box; width:48.4%; flex:0 0 auto`。**禁用 `calc(50% - Nrpx)`**（部分安卓 WebView 整条 width 失效）、**禁用 flex `gap`**；`box-sizing` 必须写在元素自身规则里（不生效是"两列挤成一列"的唯一成因）。
+  - 「图标 + 文字」间距用 `margin`；`flex:1` 主按钮必须配 `min-width:0` + `overflow:hidden`。
+  - 自定义组件事件名**禁用原生事件名**（`tap`/`longpress` 等），否则一次点击触发两次；`tea-card` 已改名 `select`。
+- 布局争议先复现再改：`preview/grid-fix-check.html` 为对照样例，用 headless Chrome 截图核对。
 
 ## 合规红线（医疗类目）
-- 严禁诊断疾病、开处方、推荐药品；命中医疗意图统一回 `SAFETY_TEXT`
-- 只用「调理/改善/舒缓/养生/保健」类表述，禁用「治疗/治愈/疗效/根治」
-- 食材限定在《药食同源目录》内，用量取日常养生参考剂量（单味 3–10g）
-- 特殊人群（孕期/哺乳/14 岁以下/慢性病）必须前置风险提示
-- 每处推荐结果末尾附免责声明
+- 严禁诊断疾病、开处方、推荐药品；命中医疗意图统一回 `SAFETY_TEXT`。
+- 只用「调理/改善/舒缓/养生/保健」，**禁用「治疗/治愈/疗效/根治」**。食材限《药食同源目录》，单味 3–10g。
+- 孕期/哺乳/14 岁以下/慢性病必须前置风险提示；每处推荐结果末尾附免责声明。
 
-## 已完成
-- 11 个页面 + 3 个组件，18 款茶方、9 种体质、10 题测评、28 味食材、10 条茶饮常识
-- `preview/design-preview.html` 为多屏静态设计预览，用于快速确认视觉方向
+## 服务端（server/）
+- 定位：**大模型只负责理解与表达，专业事实全部由 Function Call 触发硬规则引擎取回**。零第三方依赖（Node 内置 http/fetch）。
+- 服务端与端上**共用同一份知识源**（`data/`、`utils/engine.js`），不复制数据。`Dockerfile` 构建上下文 = 项目根目录。
+- 豆包/火山方舟：`https://ark.cn-beijing.volces.com/api/v3`，模型 `doubao-seed-2-1-lite-260915`。**额度归开发者账号**，Key 只放 `server/.env`。换厂商改 `LLM_BASE_URL`/`LLM_MODEL` 并清空 `LLM_THINKING`（方舟私有字段，否则 400）。模型必须支持 Function Calling。
+- 自检：`node --env-file=server/.env server/scripts/check-llm.js`；无 Key 用 `scripts/mock-llm.js` 验 Function Call 全链路；改提示词/词表/切块后跑 `scripts/eval.js`。
+- 端上链路优先级：本地医疗红线硬拦截（不发网络）→ 用户关闭 AI/熔断 → 服务端 Agent → 失败回落本地规则引擎。
 
-## 服务端（server/）· 第二轮新增
-- 定位：**大模型只负责理解与表达，专业事实全部由 Function Call 触发硬规则引擎取回**
-- 零第三方依赖，只用 Node 内置 http/fetch；`Dockerfile` 构建上下文是**项目根目录**（要 COPY ../data 与 ../utils）
-- 服务端与小程序**共用同一份知识源**（`data/`、`utils/engine.js`），不复制数据
-- 端上链路优先级：本地医疗红线硬拦截（不发网络）→ 用户关闭 AI/熔断 → 服务端 Agent → 失败回落本地规则引擎
-- API Key 只放服务端环境变量，端上绝不持有
-- 改完提示词/词表/切块策略后跑 `node server/scripts/eval.js` 回归
-- 无 API Key 时用 `server/scripts/mock-llm.js` 离线验证完整 Function Call 链路
+## 内容管理后台
+- 入口 `http://<host>:8787/admin`（本机 `http://127.0.0.1:8787/admin`），粘贴 `ADMIN_TOKEN` 登录（配置在 `server/.env`，当前 32 位）。页面为静态外壳不鉴权，**所有数据接口都要 Bearer 令牌**。侧栏：概览 / 五类内容 / 变更记录 / 审计留痕，表单由 `/api/admin/schema` 下发。
+- **`ADMIN_TOKEN` 留空 = 管理端整体关闭（接口一律 403）**，刻意如此。登录失败按 IP 限流锁定（默认 5 次 / 5 分钟）。
+- 核心设计：让 `data/*.js` 支持「**就地覆盖**」`applyOverride(next)`——必须就地改写数组与映射、**不能换引用**，`constitutions.ids` 也要就地维护。这样不必改造 20+ 处消费点。
+- **发布后必须刷新三个派生缓存**（漏一个就出「大部分对了、某处不对」的隐蔽 bug）：① `engine.js` 的 `MAX_SCORE`（`reload()`）② `tools.js` 工具枚举（按 overlay 版本惰性重建）③ `rag.buildIndex()`。
+- 链路：`POST /api/admin/login`（Bearer + `timingSafeEqual` + IP 限流）→ `PUT /api/admin/content/:type` → 三道校验（结构/合规/交叉引用）→ 原子写 `server/storage/content.json` → overlay.apply → 重建索引 → 版本 +1 → 端上 `GET /api/content?version=N` 增量拉取。
+- 合规扫描复用 `safety.WORD_MAP`（后台能发的、模型也允许说）；免责语先剔除、命中词前 6 字含否定词则豁免；疾病名只告警不阻断；交叉校验失败自动还原运行时并 422。
+- 回滚 `POST /api/admin/rollback`（用 `content.prev.json`，版本号继续递增）；播种需 `confirm:"RESEED"`。
+- 端上下发 `utils/content-client.js`：`bootstrap()` 同步套 Storage 缓存保首屏，`refresh()` 异步按版本拉取；服务不可达/缓存损坏/payload 异常一律静默回落内置内容。
+- `server/storage/` 为运行时数据（内容库 + 审计 JSONL），已 gitignore，**容器部署必须挂 volume**。回归自检 `cd server && npm test`（overlay / schema / content / admin / client）。
+- **改了 `data/*.js` 后，必须先把 `server/storage/content.json` + `content.prev.json` 移走再启动服务端**。原因：`init()` 会读旧 doc 并 `overlay.apply`，而 apply 是「就地覆盖」——**服务端一启动，内存里的 `data/*` 就被旧快照换血了**。此后 `/health` 与 `POST /api/admin/reseed` 拿到的全是旧内容（reseed 只是把已被污染的内存再快照一遍，**救不回来**）。这两个 json 通常是自检残留（`updatedBy` 形如 `live-check(...)`），归档即可。
+- 端上「看不到新内容」的排查顺序：① devtools Storage 的 `tl_content_v1` 缓存（**只删这一个 key，别清整个数据缓存**，否则体质档案/收藏/历史一起丢）② 服务端 `content.json` 版本是否仍比端上旧 ③ `refresh()` 是否被闸住。
+- **端上按 `version` 相等判定「无需更新」，所以服务端版本号必须单调递增、绝不回退。** 清空 `content.json` 后 `init()` 会从 **1** 重新播种 —— 若端上已缓存过 v1（旧内容），两边同为 1 会被判定 unchanged，**永远拉不到修正后的内容**。所以清空 storage 重启后，**必须再调一次 `POST /api/admin/reseed`** 把版本推到 2+（reseed 用当前内存数据重新快照，内容不变只推版本号）。
+- **`refresh()` 刻意不受 `store.getAiEnabled()` 约束**：内容库是公开数据、payload 不含个人信息。历史版本曾拿 AI 开关当闸门，而 AI 默认关闭且需单独同意 → 绝大多数用户永远收不到后台更新的内容。对话/档案上送才由 AI 开关把关。
+- **`notifyPages()` 目前空转**：`onContentUpdate` 全仓无页面实现；首页茶方列表只在 `onLoad` 的 `buildStatics()` 构建一次（`onShow` 仅刷档案）→ 即便拉到新内容也不会重渲染，需重启小程序或清缓存。`server/README.md:542` 声称的回调只是接口预留。
 
-## 服务端 · 第四轮：内容管理后台
-- 目的：内容原先硬编码在 `data/*.js` 并被端上打包，改一个字都要提审发版；现改为服务端可管、端上下发
-- **核心设计：让 `data/*.js` 支持「就地覆盖」，而不是改造 20 多处消费点**（端上 22 处 / 服务端 9 处）
-  - 每个数据模块导出 `applyOverride(next)`，**必须就地改写数组与映射、不能换引用**
-  - `data/constitutions.js` 的 `ids` 也要就地维护（换成新数组后旧引用读不到，已被 smoke 测出）
-- **发布后必须刷新的三个派生缓存**（漏一个就出「大部分对了、某处不对」的隐蔽 bug）：
-  1. `utils/engine.js` 的 `MAX_SCORE` → `reload()`（否则体质倾向度百分比以旧量表为基数）
-  2. `server/src/tools.js` 的工具枚举 → 按 overlay 版本**惰性重建**（否则模型推荐不到新增条目）
-  3. `rag.buildIndex()`（否则对话里检索到的还是旧文案）
-- 管理链路：`POST /api/admin/login`（Bearer + timingSafeEqual + IP 限流）→ 管理页 `/admin`
-  → `PUT /api/admin/content/:type` → 三道校验 → 原子写 `server/storage/content.json`
-  → overlay.apply → 重建索引 → 版本号 +1 → 端上 `GET /api/content?version=N` 增量拉取
-- **三道校验**：结构 / 合规 / 交叉引用。合规扫描复用 `safety.WORD_MAP`（后台能发的、模型也允许说）；
-  免责语先剔除 + 命中词前 6 字含否定词则豁免；疾病名只告警不阻断；交叉校验失败自动还原运行时并 422
-- 端上下发在 `utils/content-client.js`：`bootstrap()` 同步套用 Storage 缓存（保证首屏），
-  `refresh()` 异步按版本号拉取；服务端不可达/缓存损坏/payload 异常一律静默回落内置内容
-- 回滚 `POST /api/admin/rollback`（用 `content.prev.json`，版本号继续递增）；播种需 `confirm:"RESEED"`
-- **`ADMIN_TOKEN` 留空 = 管理端整体关闭**（宁可忘了配不可用，也不要忘了配就裸奔）
-- 多实例部署不成立：内容与热更新都是进程内 + 本地磁盘，需改共享存储与广播刷新
-- `server/storage/` 为运行时数据（内容库 + 审计 JSONL），已加入 `.gitignore`；容器部署必须挂 volume
-- 回归自检：`cd server && npm test`（overlay / schema / content / admin / client 五个）
+## 推荐策略（engine.recommend）
+- **「禁用 / 忌用」一律不进推荐池**（`teas.RISK_BLOCKED`）；「慎用 / 减量 / 咨询医师」可推荐但排序靠后。`engine.recommendFull()` 返回 `{picks, blocked}`，`recommend()` 只返回 picks（保持旧签名）。
+- **排序必须是「风险档位优先，再按权重」的二级排序**，不能用「权重 − 惩罚分」单值排序：体质 +30、季节 +14 是结构加分，会把惩罚抵消掉，产出「推荐它、又标它忌用」的自相矛盾结果。
+- 被排除的茶方**不要静默丢弃**，要在结果页/对话里列出「当前情况下不建议饮用」+ 原因，否则用户会以为库里没有。
+- 兜底补齐（用平和质温和茶补足 limit）**同样要过滤禁用/忌用**。
+- 条件性禁忌：条目可带扁平字段 **`mensesOnly`**（如 `'经量偏多'`），`hitContraindications` 只在与 `basic.menses` 一致时命中。**理由里写了「量多者暂缓」的，必须加 `mensesOnly`**，否则会把部分人的提醒错标成全员禁忌。新增禁忌字段**必须同步声明到 `server/src/content-schema.js`**，否则后台表单保存时会把未声明字段静默丢掉（故用扁平 enum 而非嵌套对象）。
 
-## 数据访问约定（内容可远程编辑后新增）
-- 展示类取值一律用 `constitutions.getOr(id)`（未知 id 返回「未知体质」占位对象，绝不返回 null）
-- `constitutions.get(id)` 保持严格返回 null，**仅用于校验 id 是否合法**
-- 原因：内容可被后台删除，用户本机历史档案可能指向已删体质；原先 11 处 `.get(id).name` 会抛异常白屏
+## 隐私与安全基线（务必保持）
+- **AI 增强默认关闭 + 单独同意**：`store.getAiEnabled()` 内部强制校验 `tl_ai_consent_v1`，未同意一律返回 false；对话页首次开启弹 `wx.showModal` 授权说明（PIPL 敏感个人信息须单独同意）。
+- **上行档案最小化**：`agent-remote.minimalProfile()` 只传 `{constitutionId, secondaryId, percent, levelText, risk:{stage,chronic,allergy}}`；性别/年龄/孕期哺乳期/慢性病/过敏史**原始值不出端**。
+- **服务端兜底必须「降维」而不是「删除」**：`index.js#stripSensitiveProfile()` 对旧客户端的 `profile.basic` 就地转成布尔标记。只删不转会把合规安全网一起删掉（孕期用户不再被强制 `flag_risk`）。`prompt.js` 只用 `p.risk`。
+- **公开接口一律限流**：`src/ratelimit.js`（固定窗口按 IP：chat 20/min、api 60/min）。**CORS 默认完全关闭**（`CORS_ORIGIN` 留空 = 不下发任何 `Access-Control-Allow-*` 头，`*` 无收益只有风险）。
+- `/api/agent/audit`（无令牌回显用户输入原文）已下线，改为带鉴权的 `/api/admin/raw-audit`。
+- 改隐私/限流/鉴权后必跑 `node server/scripts/smoke-security.js`（起假模型端点抓服务端真实请求体断言，验最终事实）。
+- **改完服务端必须重启实例再验证**（Node 启动时载模块，不重启测的是旧代码）；`/health` 的 `uptimeSec` 判断版本，端口占用查 `Get-NetTCPConnection -LocalPort 8787 -State Listen`。
 
-## 隐私与安全基线（部署前加固，务必保持）
-- **AI 增强默认关闭 + 单独同意**：`utils/store.js` 的 `getAiEnabled()` 内部强制校验
-  `tl_ai_consent_v1`，未同意一律返回 false（硬约束，不靠调用方自觉）。
-  对话页首次开启弹 `wx.showModal` 授权说明。原实现是「默认开启、隐私文案却写『不上传』」，
-  属合规硬伤（PIPL 第 28-29 条敏感个人信息须单独同意）
-- **上行档案最小化**：`utils/agent-remote.js` 的 `minimalProfile()` 只上传
-  `{constitutionId, secondaryId, percent, levelText, risk:{stage,chronic,allergy}}`；
-  性别/年龄/孕期哺乳期/慢性病/过敏史**原始值不出端**
-- **服务端兜底必须「降维」而不是「删除」**：`server/src/index.js` 的 `stripSensitiveProfile()`
-  对旧客户端传来的 `basic` 就地转成布尔标记。**只删不转会把合规安全网一起删掉**
-  （孕期用户不再被强制走 flag_risk），这条已写成 `smoke-security.js` 的断言
-- `server/src/prompt.js` 的 runtimeContext 只用 `p.risk`，不再拼原始填报值进 prompt
-- **公开接口一律限流**：`server/src/ratelimit.js`（固定窗口，按 IP 分组：
-  chat 20/min、api 60/min）。方舟额度挂在开发者账号上，无限流则可被刷爆
-- **CORS 默认完全关闭**：`CORS_ORIGIN` 留空 = 不下发任何 `Access-Control-Allow-*` 头。
-  小程序不读 CORS、管理页同源，`*` 无收益只有风险。改 `http-util.corsHeaders()`
-- **审计留痕不对外**：`/api/agent/audit`（无令牌返回用户输入原文）已下线，
-  改为带鉴权的 `/api/admin/raw-audit`
-- **`/api/agent/chat` 等敏感接口变更后，跑 `node server/scripts/smoke-security.js`**：
-  它起一个假模型端点，把服务端真实发出的请求体抓下来断言，验的是最终事实而非中间变量
+## 部署
+- **必须单实例**（内容库与热更新是进程内 + 本地磁盘，`--scale` 会实例间内容不一致）。
+- compose 用命名卷 `chalifang-storage` / `chalifang-cache`，**不用绑定挂载**（容器 uid 1000，属主不匹配会写盘失败）。
+- 托管平台若无持久卷 → 后台内容与审计日志随重部署清空，上线前必须确认。
+- 反代必须 `proxy_set_header X-Forwarded-For $remote_addr;` 覆写，否则客户端可自带该头绕过限流与登录锁定。
 
-## 客户端配置约定
-- `utils/config.js` **按环境版本自动选 API 地址**（三轨）：`API_BASE_DEVTOOLS`（127.0.0.1）/
-  `API_BASE_LAN`（开发机局域网 IP，DHCP 会变）/ `API_BASE_PROD`（HTTPS + 已备案）。
-  **不要再直接改 `API_BASE`**，它由 `pickApiBase()` 计算
-- 客服邮箱等对外占位符集中到 `utils/config.js` 的 `SUPPORT_EMAIL`，别散落在页面里
-- 打包白名单在 `project.config.json` 的 `packOptions.ignore`：已排除
-  `preview` / `server` / `docs` / `.workbuddy` / `*.md`。**`server/` 内含 `.env` 明文密钥，
-  漏排会被打进小程序包、反编译即得**
+## CI / CD
+- 单工作流 `.github/workflows/ci-deploy.yml`：`verify` → `needs` → `image`(GHCR) + `miniprogram`。用依赖图保证「校验不过就不发布」，不靠约定。
+- 触发：push master → verify+image；tag `v*` → 加 miniprogram；PR → 只 verify。`on.push.paths` 是**白名单不是 paths-ignore**，新增源码目录必须同步加入，否则改动不触发构建。
+- 镜像 `ghcr.io/szk1222/chalifang-agent`（GHCR 要求全小写；不能用 `<owner>/<repo>`，因仓库名 `-` 不是合法镜像名）。`latest` 标签显式写 `enable=${{ github.ref == 'refs/heads/master' }}`，**不要用 `is_default_branch`**（会静默永不产出）。
+- 上传脚本 `.github/scripts/upload-miniprogram.js`：`require('miniprogram-ci')` 必须排在环境校验之后；全局安装靠 `NODE_PATH=$(npm root -g)` 解析。
+- Secret `MINIPROGRAM_PRIVATE_KEY` **兼容四种形态**（base64 / 原文 / certutil 产物 / url-safe），由 `decode-key.js` 自动识别，**先试 base64 再回退原文**（判据：解出来仍带 PEM 包裹的才是密钥文件本身）。日志只打结构特征与 sha256，不回显内容（GitHub 会连带打码 Secret 片段）。
+- `private.wx<appid>.key` 本身就是 PEM 文本：1675 字节 / LF / 无 BOM，内层 base64 解出 1191 字节 DER；「粘原文 + `base64 -d`」必报 `invalid input`。
+- **IP 白名单是最大的坑**：托管 runner 出口 IP 动态，密钥一开白名单必然上传失败。
+- 已跑通：push run 37762801471（verify 14s / image 47s）；手动 run 37765001146（miniprogram 79s）。上传仅产**开发版本**，仍需公众平台「版本管理」手动设体验版。
+- 包体已实证 59 个文件（pages 33 / utils 9 / components 6 / data 5 / tabbar 3 / app.js / app.wxss），server、docs、preview、.github、.workbuddy、.env、*.md、*.key **均未进包**。
+- 无 gh CLI 时用 REST API 反查：`/actions/runs` → `/runs/{id}/jobs` → `/actions/jobs/{id}/logs`（需 `curl -L`）。注意区分流程文件的 echo 模板行与实际输出。`GET /user/packages` 需 `read:packages`，403 是权限边界非故障。
 
-## 部署形态约束
-- **必须单实例**：内容库与热更新是「进程内 + 本地磁盘」，`--scale` 会导致实例间内容不一致
-- compose 用具名卷（`chalifang-storage` / `chalifang-cache`）而非绑定挂载：
-  容器以 uid 1000 运行，绑定挂载宿主目录属主不匹配会「写盘失败」
-- **托管平台若不支持持久卷 → 后台改的内容与审计日志随重新部署清空**，上线前必须确认
-- 反向代理必须 `proxy_set_header X-Forwarded-For $remote_addr;` 覆写，
-  否则客户端可自带该头绕过限流与登录锁定
+## 推送凭证
+- 本机无 gh CLI；`credential.helper` 指向 GCM 2.9.0，**无交互环境会挂起等输入**（`GIT_TERMINAL_PROMPT=0` + `GIT_ASKPASS=echo` 拦不住）→ 推送必须由用户提供 PAT，用内联 helper 走进程环境变量。
+- PAT 需 `Contents: R/W` + `Workflows: R/W`（改 `.github/workflows/` 时缺后者会被拒）。
+- 已知缺失权限及其表现：`Actions: write` → dispatch 403（改由用户在 Actions 页点 Run workflow）；`Secrets: read` → 列 Secret 403（用作业日志判断已配置）；`read:packages` → `/user/packages` 403（从构建日志 grep 镜像标签）。
+- 判定仓库是否私有：`git -c credential.helper= ls-remote origin` → `Invalid username or token` 即私有。
 
-## CI / CD（GitHub Actions）
-- 单一工作流 `.github/workflows/ci-deploy.yml`：`verify`（语法/JSON/密钥防线/npm test）
-  → `needs` → `image`（推 GHCR）与 `miniprogram`（传体验版）。
-  **放一个文件用 `needs` 而不是拆多个 workflow**：「校验不过就不发布」由依赖图保证，不靠约定
-- 触发：push master → verify+image；tag `v*` → 再加 miniprogram；PR → 只 verify；
-  手动触发可勾选上传。顶层用 `on.push.paths` **白名单**（只列 `pages/**`、`server/**`、
-  `utils/**`、`app.js` 等真正影响产物的路径），因此改 `docs/`、`.workbuddy/` 不会空跑 CI。
-  **注意是白名单不是 `paths-ignore`**：新增源码目录时必须同步加进白名单，否则改动不触发构建。
-  已实测：提交 `.workbuddy/memory/*.md` 后运行总数仍为 1，未产生新运行
-- **镜像地址 `ghcr.io/szk1222/chalifang-agent`**。仓库名 `-` 不是合法 Docker 镜像名
-  （分隔符两侧必须都有字母数字），所以不用 `<owner>/<repo>`；GHCR 还要求全小写，
-  owner `Szk1222` 必须转小写
-- `latest` 标签**不要用 `{{is_default_branch}}`** —— 取决于仓库默认分支设置，
-  不一致时会静默永不产出。显式写 `enable=${{ github.ref == 'refs/heads/master' || ... }}`
-- 小程序上传 `.github/scripts/upload-miniprogram.js`：用 API 而非 CLI 长参数；
-  `require('miniprogram-ci')` 必须排在环境校验**之后**（否则依赖缺失时 MODULE_NOT_FOUND 盖住真因）；
-  装在全局，靠 `NODE_PATH=$(npm root -g)` 解析（装项目内会落进上传目录）
-- 上传密钥走 `Secrets.MINIPROGRAM_PRIVATE_KEY`。**契约不是「base64」，而是「两种都收」**：
-  - a) 密钥文件的 base64 单行文本（`base64 -w0 private.wxXXXX.key | clip`）
-  - b) 密钥文件的**原始文本内容**（直接粘贴 .key 全文也可以）
-  - 由 `.github/scripts/decode-key.js` 自动识别（base64 / 原文 / certutil 产物 / url-safe 四种）
-  - **判定顺序必须先试 base64 再回退原文**：certutil 产物（base64 外套 BEGIN/END）两者都像，
-    只有「**解出来仍带 PEM 包裹**」的才是密钥文件本身
-  - 日志只打印结构特征（字节数 / 行数 / PEM 标签 / **sha256**）**不回显内容**；
-    sha256 供与本地 `sha256sum private.wxXXXX.key` 对照，可确证 Secret 内容正确
-- **`private.wx<appid>.key` 的实际结构**（本机实证）：**本身就是 PEM 文本** ——
-  `-----BEGIN RSA PRIVATE KEY-----` + 25 行 base64（1588 字符）+ END 行，
-  共 **1675 字节 / LF 换行 / 无 BOM**，内层 base64 解出 1191 字节 DER。
-  所以「粘原文 + `base64 -d`」必然报 `base64: invalid input`，
-  **而这个报错完全看不出真实原因**（见「踩过的坑」）
-- **IP 白名单是最大的坑**：GitHub 托管 runner 出口 IP 动态（Azure 段），
-  密钥一开白名单**必然上传失败** —— 要么关白名单，要么自托管 runner
-- 详细说明见 `docs/github-actions-deploy.md`
-- **已实测跑通**（2026-10-08，run #37762801471，push 触发，全程约 1 分钟）：
-  verify 14s ✅ / image 47s ✅（产出 `latest` + `master` + `sha-<短哈希>`）/ miniprogram 按设计 skipped
-- **小程序上传亦已跑通**（同日 run #37765001146，手动触发）：
-  miniprogram ✅ **79s**（`还原上传密钥` → `安装 miniprogram-ci` → `上传体验版`）。
-  上传成功只是产出**开发版本**，还需到公众平台「版本管理」手动设为体验版才能拿到二维码
-- **包体泄漏已实证**：从上传作业日志解析出实际打包清单共 **59 个文件**
-  （`pages 33 / utils 9 / components 6 / data 5 / custom-tab-bar 3 / app.js / app.wxss`），
-  `server/`、`docs/`、`preview/`、`.github/`、`.workbuddy/`、`.env`、`*.md`、`*.key` **均未进包**
-- **无 `gh` CLI 时用 REST API 反查运行态**（PAT 需 `Actions: read`）：
-  `GET /repos/{o}/{r}/actions/runs` → run id →
-  `GET .../runs/{id}/jobs` → job id + 每步 conclusion →
-  `GET /repos/{o}/{r}/actions/jobs/{id}/logs`（**要 `curl -L`** 跟随重定向）→ grep 实际产物
-  - 读日志要分清「流程文件里的 echo 模板行」与「实际输出」——前者也会被 grep 命中
-  - `GET /user/packages` 需 `read:packages`，未授予时返回
-    `Resource not accessible by personal access token`，**这是权限边界不是故障**，
-    该走作业日志核实镜像标签
-
-## 推送凭证（重要）
-- 本机无 `gh` CLI；`credential.helper` 指向 Git Credential Manager 2.9.0，
-  **在无交互环境下会一直挂起等输入**（`GIT_TERMINAL_PROMPT=0` + `GIT_ASKPASS=echo` 也拦不住）
-- 因此**推送必须由用户提供 PAT**，用内联 helper 走进程环境变量（见「踩过的坑」）
-- **PAT 必须同时有 `Contents: Read and write` + `Workflows: Read and write`**：
-  推送 `.github/workflows/` 下的文件时，缺 workflow 权限会被拒
-  （`refusing to allow a Personal Access Token to create or update workflow`）
-- **实际拿到的令牌还缺这几项，会以 403 出现 —— 是权限边界不是故障**：
-  | 缺失权限 | 表现 | 绕开方式 |
-  |---|---|---|
-  | `Actions: write` | `POST .../workflows/x/dispatches` 返 **403**，无法用 API 触发 | 让用户在 Actions 页点 Run workflow |
-  | `Secrets: read` | `GET .../actions/secrets` 返 **403**，看不见 Secret 列表 | 用作业日志里 `MP_PRIVATE_KEY: ***`（有值即已配置）判断 |
-  | `read:packages` | `GET /user/packages` 返 **403** | 从构建作业日志里 grep 实际镜像标签 |
-  **注意**：dispatch 成功返回 **204 且无响应体**；脚本若只看「响应体是否为空」会把 403 也报成成功 ——
-  必须同时判 HTTP 状态码
-- 判定仓库是否私有：`git -c credential.helper= ls-remote origin`
-  → `Invalid username or token` 即私有
-
-## 踩过的坑（务必不要再犯）
-1. **正则 g 标志**：`/x/g.test(s)` 会推进 lastIndex 造成随机漏检 → 词表一律用纯字符串数组
-2. **流式内容净化的边界**：固定 holdback 无法消除跨 chunk 漏检，必须用「安全前缀」回退判定
-3. **中文检索**：必须加停用短语表、未登录词直接丢弃、候选只用长度≥2 的强词项、并加入 trigram
-4. **规则词库要定期用评测集反查覆盖度**，凭直觉补词会漏
-5. **自定义组件事件名禁用原生事件名**：`triggerEvent('tap', …)` 会让父级 `bind:tap`
-   同时收到「自定义事件（detail 带业务数据）」和「组件内原生 tap 冒泡（detail 是 {x,y}）」两次，
-   表现为一次点击触发两次跳转。`tea-card` 已改名 `select`。同理禁用 longpress/touchstart 等
-6. **`calc()` 里不要用 `rpx`**：部分安卓 WebView 解析阶段 `rpx` 是非法单位 → 整条声明被丢弃，
-   数值退化（如 `width` 变 auto）。需要多列就写百分比
-7. **依赖布局的属性一律给兜底**：`flex:1` 配 `min-width:0`；按钮/胶囊配 `overflow:hidden`
-5. **行内 `<text>` 不能承载胶囊样式**：`<text>` 在真机不认垂直内边距，加 padding+border-radius+background
-   会被压成一条细扁色块、圆角与描边渲染异常 → 胶囊/标签一律用 `<view>`（固定 height + line-height 居中
-   + text-align 居中 + nowrap）。另外行内 `<text>` 内的换行/缩进会渲染成空白，文本内容必须写在一行
-6. **元素间距不要依赖 flex `gap`**：部分 WebView 上 `gap` 不生效，图标会直接贴住文字。
-   按钮/胶囊这类「图标 + 文字」的间距用 `margin-left`；`flex: 1` 的主按钮必须同时写 `min-width: 0`，
-   否则内容可能撑出圆角胶囊
-7. **合规整改时「删掉敏感字段」和「保住安全网」是两回事**：服务端收到旧客户端的
-   `profile.basic` 时，若只是丢弃，孕期/慢性病人群就失去了「强制 flag_risk、不给配方」的保护。
-   正确做法是**就地降维**成布尔标记再丢弃原值（见 `stripSensitiveProfile`）。
-   凡涉及「最小化上传」的改造，都要先问一句：下游决策真正需要的是哪一位信息？
-8. **改完隐私/限流/鉴权相关代码，必须跑带「真实抓包」的用例**：
-   `smoke-security.js` 通过假模型端点抓服务端真实发出的请求体验证，而不是断言中间变量 ——
-   本次就是它暴露了「服务端兜底只删不转」这个隐蔽 bug（端上改了、服务端没改，测试却全绿）
-9. **服务端改完代码必须重启实例再验证**：Node 在启动时载入模块，`127.0.0.1:8787` 上挂着的旧进程
-   跑的是旧代码 —— 不重启就测，测的是旧行为，会把旧结论当成新代码的结论。
-   查活着的是哪个版本看 `/health` 的 `uptimeSec`；定位占用进程
-   `Get-NetTCPConnection -LocalPort 8787 -State Listen` → `OwningProcess` → `Stop-Process`
-10. **验证「敏感数据不外泄」用哨兵值 + 全目录扫描**：把测试入参写成可搜索的唯一串，
-    跑完真实链路后遍历运行时可写目录逐文件 `indexOf` 搜哨兵。
-    注意区分「固定模板文案」与「用户数据」——`audit-*.jsonl` 里的「孕期」来自
-    `flag_risk` 的提示模板，不是用户填报值，别误报
-11. **YAML 块标量里的 `#` 是字面内容，不是注释**：`tags: |` 里写注释会被当成一个标签
-    传给 metadata-action。注释要放在块标量**外面**
-12. **CI 的 `run:` 脚本要在本地实跑一遍**：YAML 合法 ≠ 脚本能跑。
-    把脚本体原样在 Git Bash 执行，本次就是这样确认三段脚本在 `set -euo pipefail` 下都正常。
-    另外 `[ -z "$x" ] && x=...` 在 `set -e` 下会因返回非零而直接退出，必须写成 `if` 语句
-13. **扫「密钥是否泄漏」时，别把关键词本身当命中**：`grep -rn github_pat_ .` 会命中
-    自己写进文档/日志的 **sed 脱敏规则字面量**（`s/github_pat_[A-Za-z0-9_]*/<TOKEN>/g`）
-    和 CI 流程文件里的 `echo "::error::..."` 模板文本，造成误报。
-    判断泄漏要搜**真实值前缀**（即「能被拿去用的那一整串」），而不是「描述这类东西的词」。
-    推论：**写进记忆文件的也应该是「怎么判别」而不是被判别物本身** ——
-    把密钥/令牌的前几位抄进 md 属于自造泄漏面，一律不写
-14. **凡是「要求用户先手工编码再粘贴」的设计，都会以故障形式回到自己身上**：
-    上传密钥原本写死「Secret 必须是 base64」，结果用户粘了 `.key` 原文，
-    CI 只回一句 `base64: invalid input` —— **报错完全指不出真实原因**，排查成本极高。
-    正确做法是**让接收端兼容多种形态**（见 `decode-key.js`：base64 / 原文 / certutil 产物 / url-safe），
-    并把「失败时该粘什么」写进错误信息。设计 Secrets / 环境变量 / 配置项时先问：
-    「用户最自然的做法是什么？我接得住吗？」
-15. **多分支逻辑的测试，必须先确认分支真被走到**：给 url-safe 分支造的用例
-    因为该文件的 base64 天然不含 `+`/`/`，输入与 standard 分支完全相同 ——
-    **两条路径测的其实是同一条**，却显示「4/4 通过」。靠打印「走了哪条分支」才发现。
-    修法：断言里带上**分支标识**，并用另造的随机载荷补测（本次才真正覆盖到 url-safe）。
-16. **base64 的字符集不是「均匀随机」——源数据受限时输出也会受限**：
-    PEM 正文只由 base64 字母表 + 连字符 + 换行组成，而 `+`/`/`（索引 62/63）
-    要求源字节以 `>`(0x3E)/`?`(0x3F) 结尾，这类字符 PEM 里没有 →
-    **这份 1675 字节密钥文件的 base64 里 `+`/`/` 出现 0 次**（2236 字符）。
-    我一度判断「统计上不可能，一定是 shell 把引号吃了」——**差点据此改错方向**。
-    遇到反常数据先用落盘脚本（避开 shell 引号）复验，再下结论
-17. **本机两个会导致「误判成服务故障」的环境坑**：
-    - `HTTP_PROXY` 指向 Mihomo `127.0.0.1:59230` → curl 访问内网 IP
-      `192.168.31.37:8787` 被代理拦掉、显示不可达；加 `--noproxy '*'` 后 2.8ms 返回 200。
-      **排查「不可达」先看代理变量**，别急着怀疑服务端或防火墙
-    - `/tmp` 在 Git Bash 与 Node 里**不是同一个目录**：bash 当 Unix 路径，
-      node 的 `require('/tmp/x.json')` 按当前盘符解析成 `D:\tmp\x.json` → `MODULE_NOT_FOUND`。
-      跨工具传文件一律用系统临时目录的**绝对 Windows 路径**
-18. **「期望为 0」的检查必须配阳性对照，否则 0 与「模式根本没匹配上」无法区分**：
-    本轮用 `^\[[0-9]+\] …` 解析 Actions 日志里的打包清单，**连续两次得到 0 条**，
-    差点据此报告「包内无敏感文件」。真实行格式是
-    `2026-10-08T10:41:47.0821435Z␣␣␣[144] pages/result/result.js` ——
-    `Z` 后面是**三个空格**，而我的模式只留了一个，整条正则空转。
-    修法：先跑「必然命中」的探针（本次 `pages/` 应命中 132 次、`[N]` 行应命中 247 次），
-    **对照通过后那些 0 才有意义** —— 让证据自己可证伪，而不是靠「我觉得应该没错」
-19. **GitHub 日志脱敏会吃掉自己的诊断信息**：`decode-key.js` 打印的 `PEM 标签` 显示为 `***` ——
-    因为该串是 Secret 的子串，GitHub 把任何**日志中出现的 Secret 片段**一并打码。
-    这反而说明 Secret 已送达。**设计诊断输出时别依赖「回显 Secret 的一部分」**，
-    要依赖**派生值**（sha256、长度、结构标签的布尔判断）
-
-## 服务端 · 第三轮：接豆包（火山方舟）
-- 已接真实豆包并端到端联调通过：端点 `https://ark.cn-beijing.volces.com/api/v3`，模型 `doubao-seed-2-1-lite-260915`（账号已开通）
-- **额度归开发者账号**：方舟按持有 API Key 的账号计费，终端用户无法用自己豆包账号的额度。
-  Key 只放服务端 `server/.env`（已在 `.gitignore` / `.dockerignore` 中）
-- `LLM_THINKING=disabled` 关深度思考；`llm.js` 另有一道 `reasoning_content` 过滤（只计数、不下发），
-  字数记在 `done.meta.reasoningChars`
-- 换厂商：只改 `LLM_BASE_URL` / `LLM_MODEL`，并把 `LLM_THINKING` 置空（thinking 是方舟私有字段，否则 400）
-- 部署前跑 `node --env-file=server/.env server/scripts/check-llm.js` 自检（验 Key/模型/流式/Function Call）
-- 模型必须支持 Function Calling，否则推荐链路退化为闲聊
-- 方舟错误码辨析：`ModelNotOpen` = ID 正确但未开通；`InvalidEndpointOrModel.NotFound` = ID 已下线
-- 刚开通模型后有**分钟级同步延迟**，期间仍可能报 ModelNotOpen，稍等重试即恢复
-- 默认用 `lite`（够用且省），质量不够再换 `doubao-seed-2-1-pro-260915`
-- **2026-10-08 复验通过**（修复后）：`check-llm.js` 三项全过（Key/流式/Function Call）；
-  真实链路 `/api/agent/chat` 双语料验证 —— 孕期待测 → `flag_risk`×3 且明确不给配方；
-  空档案 → `recommend_tea` 正常推荐；限流 60s 窗口第 21 次请求 429
+## 通用铁律（历史踩坑提炼）
+- **正则禁用 `g` 标志 + `.test()`**（lastIndex 推进会随机漏检）；合规词表一律用纯字符串数组。
+- 流式内容净化的固定 holdback 无法消除跨 chunk 漏检，必须用「安全前缀」回退判定。
+- 中文检索：加停用短语表 + 未登录词直接丢弃 + 候选只用长度 ≥2 的强词项 + trigram。规则词库要定期用评测集反查覆盖度。
+- **凡是「要求用户先手工编码再粘贴」的设计，都会以故障形式回到自己身上**——接收端应兼容多种形态，并把「失败时该粘什么」写进错误信息。
+- **「期望为 0」的检查必须配阳性对照**，否则 0 与「模式根本没匹配上」无法区分（曾因此差点误报「包内无敏感文件」）。
+- 多分支逻辑的测试必须确认分支真被走到（曾出现两条路径实为同一条却"全绿"）；断言要带分支标识。
+- **YAML 块标量 `tags: |` 里的 `#` 是字面内容不是注释**；CI 的 `run:` 脚本要在本地实跑一遍（YAML 合法 ≠ 脚本能跑，`set -e` 下 `[ -z "$x" ] && x=...` 会直接退出，须写成 `if`）。
+- **本机环境坑**：`HTTP_PROXY` 指向 Mihomo `127.0.0.1:59230`，curl 访问内网 IP 被拦 → 加 `--noproxy '*'`，排查「不可达」先看代理变量；`/tmp` 在 Git Bash 与 Node 里不是同一目录，跨工具传文件用绝对 Windows 路径。
 
 ## 文档
-- `docs/deploy-preflight.md` — 部署前审计报告：问题清单（按严重级别）、修复状态、上线 Checklist、PocketBay 冲突分析
-- `server/README.md` — 服务端架构、接口契约、部署（含 Nginx 关 buffering 的 SSE 配置）
-- `docs/llm-integration.md` — 从 agent.js 换到真实大模型的完整步骤与降级策略
-- `docs/resume-project.md` — 简历包装方案：能写什么、不能写什么、面试追问预案
+- `docs/deploy-preflight.md` 部署前审计报告 + 上线 Checklist；`server/README.md` 架构 / 接口契约 / 部署（含 Nginx SSE 关 buffering）；
+- `docs/llm-integration.md` 换真实大模型的完整步骤与降级策略；`docs/resume-project.md` 简历包装方案。
