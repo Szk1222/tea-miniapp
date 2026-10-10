@@ -81,7 +81,7 @@ async function main() {
 
   console.log('\n【内容读取与发布】');
   r = await call('/api/admin/content/teas', { token: T });
-  ok('读取茶方库', r.json.ok && r.json.value.length === 18, r.json.value.length + ' 条');
+  ok('读取茶方库', r.json.ok && r.json.value.length === 23, r.json.value.length + ' 条');
   const edit = r.json.value;
   edit[0].subtitle = '疏肝和胃 · 后台改写验证';
   r = await call('/api/admin/content/teas', { method: 'PUT', token: T, body: { value: edit, actor: 'smoke' } });
@@ -91,7 +91,7 @@ async function main() {
 
   console.log('\n【内容下发接口】');
   r = await call('/api/content?version=1');
-  ok('旧版本收到完整内容', r.json.ok && r.json.unchanged === false && r.json.payload.teas.length === 18);
+  ok('旧版本收到完整内容', r.json.ok && r.json.unchanged === false && r.json.payload.teas.length === 23);
   r = await call('/api/content?version=2');
   ok('同版本只回版本号', r.json.ok && r.json.unchanged === true);
 

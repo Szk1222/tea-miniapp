@@ -12,6 +12,7 @@
           <text>{{c.name}}适配</text>
         </view>
         <view wx:if="{{seasonFit}}" class="hero__badge hero__badge--soft">{{seasonName}}适宜</view>
+        <view wx:if="{{tea.isPilot}}" class="hero__badge hero__badge--soft">含试点物质</view>
       </view>
       <view class="hero__name">{{tea.name}}</view>
       <view class="hero__sub">{{tea.subtitle}}</view>
@@ -19,6 +20,17 @@
   </view>
 
   <view class="container">
+
+    <!-- 风险提示：仅当用户档案里填了对应情况时才出现 -->
+    <view wx:if="{{risk}}" class="risk-card risk-card--{{risk.level === '禁用' || risk.level === '忌用' ? 'danger' : 'warn'}}">
+      <view class="risk-card__head">
+        <icon name="alert" size="{{32}}" color="{{risk.level === '禁用' || risk.level === '忌用' ? '#C4553F' : '#B9873A'}}" weight="{{1.7}}" />
+        <text class="risk-card__title">结合你填写的情况，这款需要留意（{{risk.level}}）</text>
+      </view>
+      <text class="risk-card__line" wx:if="{{riskText}}">{{riskText}}</text>
+      <text class="risk-card__line" wx:for="{{drugNotes}}" wx:key="*this">{{item}}</text>
+      <text class="risk-card__foot">{{drugGeneral}}</text>
+    </view>
 
     <!-- 性味 -->
     <view class="facts">
@@ -54,7 +66,7 @@
       </view>
       <view class="ing-note">
         <icon name="info" size="{{26}}" color="#98A69C" weight="{{1.7}}" />
-        <text>以上为单人一次日常养生参考用量，请勿自行加倍。</text>
+        <text>以上为{{tea.dosageBasis || '代茶饮用量'}}，{{tea.usageCap || '单味 ≤8g · 全方 ≤20g/日'}}，请勿自行加倍。{{courseText}}</text>
       </view>
     </view>
 
@@ -126,6 +138,19 @@
         <text>{{item}}</text>
       </view>
     </view>
+
+    <!-- 禁忌人群（与个人档案无关，是这款茶方本身的适用边界） -->
+    <block wx:if="{{contra.length}}">
+      <view class="section-head">
+        <view class="section-title">不适用 / 需留意人群</view>
+      </view>
+      <view class="card">
+        <view class="contra" wx:for="{{contra}}" wx:key="text">
+          <text class="contra__level">{{item.level}}</text>
+          <text class="contra__text">{{item.text}}</text>
+        </view>
+      </view>
+    </block>
 
     <!-- 注意 -->
     <view class="section-head">

@@ -2,6 +2,91 @@
   padding-bottom: 20rpx;
 }
 
+/* ---------------- 风险提示卡 ---------------- */
+.risk-card {
+  margin-top: 28rpx;
+  padding: 26rpx 28rpx;
+  border-radius: 24rpx;
+  border: 1rpx solid #F0E2C6;
+  background: #FDF8EE;
+}
+
+.risk-card--danger {
+  border-color: #F2D6CE;
+  background: #FDF2EF;
+}
+
+.risk-card__head {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.risk-card__title {
+  flex: 1;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #8A6524;
+  line-height: 1.6;
+}
+
+.risk-card--danger .risk-card__title {
+  color: #A8442E;
+}
+
+.risk-card__line {
+  display: block;
+  font-size: 24rpx;
+  color: #6E6B5E;
+  line-height: 1.75;
+}
+
+.risk-card__foot {
+  display: block;
+  margin-top: 12rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid #F0E6D2;
+  font-size: 22rpx;
+  color: #938D7C;
+  line-height: 1.6;
+}
+
+/* ---------------- 禁忌人群 ---------------- */
+.contra {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 12rpx 0;
+}
+
+.contra:first-child {
+  padding-top: 0;
+}
+
+.contra:last-child {
+  padding-bottom: 0;
+}
+
+.contra__level {
+  flex: 0 0 auto;
+  font-size: 21rpx;
+  color: #B4533A;
+  background: #FBEDE9;
+  border-radius: 999rpx;
+  padding: 4rpx 18rpx;
+  line-height: 1.6;
+}
+
+.contra__text {
+  flex: 1;
+  font-size: 25rpx;
+  color: #3D4D44;
+  line-height: 1.65;
+}
+
 /* ---------------- 主视觉 ---------------- */
 .hero {
   position: relative;

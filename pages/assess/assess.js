@@ -5,11 +5,27 @@ const store = require('../../utils/store.js');
 const BASIC = questions.basic;
 
 const STEPS = [];
-STEPS.push({ kind: 'basic1' });
-STEPS.push({ kind: 'basic2' });
+STEPS.push({ kind: 'basic1' });   // 性别 / 年龄段
+STEPS.push({ kind: 'basic2' });   // 阶段 / 慢病 / 口味 / 过敏史文本
+STEPS.push({ kind: 'basic3' });   // 在用西药 / 补充剂 / 过敏原 / 月经情况
 questions.list.forEach(function (q, i) {
   STEPS.push({ kind: 'q', index: i });
 });
+
+/** 多选互斥工具：「以上都没有」与其它项互斥 */
+function toggleIn(sel, v, noneLabel) {
+  const next = Object.assign({}, sel);
+  if (v === noneLabel) {
+    const on = !next[v];
+    Object.keys(next).forEach(function (k) { delete next[k]; });
+    if (on) next[v] = true;
+  } else {
+    delete next[noneLabel];
+    if (next[v]) delete next[v];
+    else next[v] = true;
+  }
+  return next;
+}
 
 Page({
   data: {
@@ -25,12 +41,20 @@ Page({
     genders: BASIC.genders,
     ages: BASIC.ages,
     conditions: BASIC.conditions,
+    drugs: BASIC.drugs,
+    supplements: BASIC.supplements,
     stages: BASIC.stages,
+    allergens: BASIC.allergens,
+    menses: BASIC.menses,
     tastes: BASIC.tastes,
     gender: '',
     age: '',
     stage: '无',
+    mensesSel: '',
     condSel: {},
+    drugSel: {},
+    suppSel: {},
+    allergenSel: {},
     tasteSel: {},
     allergy: '',
     basicReady: false,
@@ -90,19 +114,21 @@ Page({
   pickStage(e) {
     this.setData({ stage: e.currentTarget.dataset.v });
   },
+  pickMenses(e) {
+    this.setData({ mensesSel: e.currentTarget.dataset.v });
+  },
+
   toggleCond(e) {
-    const v = e.currentTarget.dataset.v;
-    const sel = Object.assign({}, this.data.condSel);
-    if (v === '以上都没有') {
-      const on = !sel[v];
-      Object.keys(sel).forEach(function (k) { delete sel[k]; });
-      if (on) sel[v] = true;
-    } else {
-      delete sel['以上都没有'];
-      if (sel[v]) delete sel[v];
-      else sel[v] = true;
-    }
-    this.setData({ condSel: sel });
+    this.setData({ condSel: toggleIn(this.data.condSel, e.currentTarget.dataset.v, '以上都没有') });
+  },
+  toggleDrug(e) {
+    this.setData({ drugSel: toggleIn(this.data.drugSel, e.currentTarget.dataset.v, '以上都没有') });
+  },
+  toggleSupp(e) {
+    this.setData({ suppSel: toggleIn(this.data.suppSel, e.currentTarget.dataset.v, '以上都没有') });
+  },
+  toggleAllergen(e) {
+    this.setData({ allergenSel: toggleIn(this.data.allergenSel, e.currentTarget.dataset.v, '以上都没有') });
   },
   toggleTaste(e) {
     const v = e.currentTarget.dataset.v;
@@ -155,12 +181,19 @@ Page({
     const d = this.data;
     const result = engine.analyze(d.answers);
     const condList = Object.keys(d.condSel);
+    const drugList = Object.keys(d.drugSel);
+    const suppList = Object.keys(d.suppSel);
+    const allergenList = Object.keys(d.allergenSel);
     const tasteList = Object.keys(d.tasteSel);
     const basic = {
       gender: d.gender,
       age: d.age,
       stage: d.stage,
       conditions: condList,
+      drugs: drugList,
+      supplements: suppList,
+      allergens: allergenList,
+      menses: d.gender === '女' ? (d.mensesSel || '') : '',
       tastes: tasteList,
       allergy: (d.allergy || '').trim()
     };
@@ -179,19 +212,21 @@ Page({
     store.setConsult({
       stages: d.stage,
       conditions: condList.join('、') || '以上都没有',
+      drugs: drugList.join('、') || '以上都没有',
+      allergens: allergenList.join('、') || '以上都没有',
       allergy: basic.allergy,
       tastes: tasteList
     });
     getApp().globalData.profile = profile;
 
-    const risk = d.stage === '孕期' || d.stage === '哺乳期' || d.stage === '备孕中' ||
-      d.age === '18 岁以下' ||
-      condList.some(function (x) { return x !== '以上都没有'; });
+    // 风险判定统一走 engine.riskFlags：这里改了判定口径，结果页与服务端的标记才能一致
+    const flags = engine.riskFlags(basic);
+    const risk = flags.stage || flags.chronic;
 
     if (risk) {
       wx.showModal({
         title: '特殊人群提示',
-        content: '你填写的信息涉及需要特别留意的阶段或基础健康情况。以下结果仅用于了解体质养生方向，任何茶饮建议请先咨询医师后再决定是否饮用。',
+        content: '你填写的信息涉及需要特别留意的阶段、基础健康情况或用药物。以下结果仅用于了解体质养生方向，任何茶饮建议请先咨询医师后再决定是否饮用。',
         showCancel: false,
         confirmText: '我已了解',
         confirmColor: '#2E6B4F',

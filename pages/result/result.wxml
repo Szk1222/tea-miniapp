@@ -24,7 +24,7 @@
         <view class="result-hero__badge" style="background:{{c.color}}">
           <icon name="{{c.icon}}" size="{{44}}" color="#FFFFFF" weight="{{1.6}}" />
         </view>
-        <view class="result-hero__label">主导体质</view>
+        <view class="result-hero__label">体质倾向参考</view>
       </view>
       <view class="result-hero__name">{{c.name}}</view>
       <view class="result-hero__short">{{c.short}}</view>
@@ -97,9 +97,52 @@
         </view>
       </view>
 
+      <!-- 自我对照（国标维度：形体 / 舌象 / 心理 / 环境适应） -->
+      <view class="section-head">
+        <view class="section-title">自我对照</view>
+      </view>
+      <view class="card">
+        <view class="kv" wx:if="{{c.bodyFeature}}">
+          <text class="kv__k">形体</text>
+          <text class="kv__v">{{c.bodyFeature}}</text>
+        </view>
+        <view class="kv" wx:if="{{c.psych}}">
+          <text class="kv__k">心理</text>
+          <text class="kv__v">{{c.psych}}</text>
+        </view>
+        <view class="kv" wx:if="{{c.tongue}}">
+          <text class="kv__k">舌象</text>
+          <text class="kv__v">{{c.tongue}}</text>
+        </view>
+        <view class="kv" wx:if="{{c.pulse}}">
+          <text class="kv__k">脉象</text>
+          <text class="kv__v">{{c.pulse}}</text>
+        </view>
+        <view class="kv" wx:if="{{c.adaptability}}">
+          <text class="kv__k">环境适应</text>
+          <text class="kv__v">{{c.adaptability}}</text>
+        </view>
+        <block wx:if="{{c.keyPoints.length}}">
+          <view class="divider"></view>
+          <view class="feat" wx:for="{{c.keyPoints}}" wx:key="*this">
+            <view class="feat__dot" style="background:{{c.color}}"></view>
+            <text class="feat__text">{{item}}</text>
+          </view>
+        </block>
+      </view>
+
+      <!-- 日常留意方向 -->
+      <view wx:if="{{c.tendencyNotice.length}}" class="card">
+        <view class="bar-tip" style="margin-bottom:14rpx">以下几项属方向性建议，不针对任何具体疾病</view>
+        <view class="life" wx:for="{{c.tendencyNotice}}" wx:key="*this">
+          <view class="life__idx">{{index + 1}}</view>
+          <text class="life__text">{{item}}</text>
+        </view>
+      </view>
+
       <!-- 推荐茶方 -->
       <view class="section-head">
-        <view class="section-title">{{seasonName}}适配茶方</view>
+        <view class="section-title">{{c.name}}适配茶方</view>
         <view class="section-more" bindtap="goTeaList">
           <text>全部茶方</text>
           <icon name="chevronRight" size="{{24}}" color="#93A099" />
@@ -109,6 +152,50 @@
         <view class="tea-list__item" wx:for="{{recommend}}" wx:key="id">
           <tea-card tea="{{item}}" variant="row" bind:select="openTea" />
         </view>
+      </view>
+      <view wx:if="{{recommendEmpty}}" class="card">
+        <text class="warn-item__text">结合你填写的阶段与用药情况，这个养生方向上暂时没有更合适的选择。可以先看下面的说明，或直接问顾问怎么调整。</text>
+      </view>
+
+      <!-- 逐款饮用提示（由用药/慢病/阶段联动命中） -->
+      <view wx:if="{{teaWarnings.length}}" class="section-head">
+        <view class="section-title">这几款请特别留意</view>
+      </view>
+      <view wx:if="{{teaWarnings.length}}" class="card">
+        <view
+          class="warn-item"
+          wx:for="{{teaWarnings}}"
+          wx:key="id"
+          data-id="{{item.id}}"
+          bindtap="openWarnTea"
+        >
+          <view class="warn-item__head">
+            <text class="warn-item__name">{{item.name}}</text>
+            <view class="warn-item__level">{{item.level}}</view>
+          </view>
+          <text class="warn-item__text">{{item.text}}</text>
+        </view>
+      </view>
+
+      <!-- 命中禁用/忌用 → 不进推荐，单独说明原因 -->
+      <view wx:if="{{blocked.length}}" class="section-head">
+        <view class="section-title">当前情况下不建议饮用</view>
+      </view>
+      <view wx:if="{{blocked.length}}" class="card">
+        <view
+          class="warn-item"
+          wx:for="{{blocked}}"
+          wx:key="id"
+          data-id="{{item.id}}"
+          bindtap="openWarnTea"
+        >
+          <view class="warn-item__head">
+            <text class="warn-item__name">{{item.name}}</text>
+            <view class="warn-item__level warn-item__level--block">{{item.level}}</view>
+          </view>
+          <text class="warn-item__text">{{item.text}}</text>
+        </view>
+        <view class="warn-note">以上茶方在当前情况下不建议饮用。特殊时期结束、或用药方案调整后，再回来看推荐会更贴合。</view>
       </view>
 
       <!-- 生活建议 -->
@@ -142,7 +229,7 @@
 
       <view class="disclaimer">
         <icon name="info" size="{{28}}" color="#98A69C" weight="{{1.7}}" />
-        <text class="disclaimer__text">本测评结果与茶饮建议仅作日常养生参考，不替代专业医疗建议。如有明确的身体不适或疾病问题，请及时前往正规医疗机构就诊。</text>
+        <text class="disclaimer__text">本结果基于自评问卷，仅供参考，不等同于中医师面诊辨识，不作为诊断或用药依据；茶饮建议不替代专业医疗建议。如有明确的身体不适或疾病问题，请及时前往正规医疗机构就诊。</text>
       </view>
 
       <view class="page-bottom-gap"></view>

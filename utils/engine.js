@@ -148,23 +148,56 @@ function scoreTea(tea, opt) {
   return sc;
 }
 
+/* ---------------- 推荐：风险分级 ----------------
+ * 「禁用 / 忌用」是「不该喝」，不是「少喝一点」—— 它们**不进推荐池**。
+ * 「慎用 / 减量 / 咨询医师」仍可推荐，但排序必须让它们靠后。
+ *
+ * 为什么不能只用「权重 − 惩罚分」单值排序：体质匹配 +30、季节匹配 +14 是结构加分，
+ * 而惩罚分再大也可能被抵消。曾出现「忌用茶方排在慎用茶方之前、甚至排第一」的
+ * 自相矛盾结果（推荐区推荐它、下面又标它忌用）。故改为**风险档位优先**的二级排序。
+ * ------------------------------------------------------------------ */
+
+/** 命中即排除出推荐池 */
+const RISK_BLOCKED = ['禁用', '忌用'];
+
+/** 风险档位：数字越大越靠后。仅在未被 RISK_BLOCKED 排除时才有意义 */
+function riskTier(level) {
+  if (!level) return 0;
+  if (level === '慎用') return 3;
+  if (level === '减量') return 2;
+  return 1; // 咨询医师
+}
+
 /**
- * 为体质推荐茶方
+ * 为体质推荐茶方（含被排除项，供页面分区展示）。
+ *
  * @param {string} primary 主导体质 id
- * @param {object} opt { secondary, season, limit, exclude }
+ * @param {object} opt { secondary, season, limit, exclude, preferTags, basic }
+ * @returns {{picks:Array, blocked:Array}} blocked 为命中禁用/忌用而被排除的茶方
  */
-function recommend(primary, opt) {
+function recommendFull(primary, opt) {
   opt = opt || {};
   const limit = opt.limit || 3;
   const season = opt.season || seasonOf();
+
+  const blocked = [];
   const pool = [];
+
   teas.list.forEach(function (t) {
     if (opt.exclude && opt.exclude.indexOf(t.id) > -1) return;
     const sameP = t.constitution === primary;
     const sameS = opt.secondary && t.constitution === opt.secondary;
     if (!sameP && !sameS) return;
+
+    const risk = opt.basic ? riskOf(t, opt.basic) : null;
+    const level = risk ? risk.level : '';
+    if (RISK_BLOCKED.indexOf(level) > -1) {
+      blocked.push({ tea: t, risk: risk });
+      return;
+    }
     pool.push({
       tea: t,
+      tier: riskTier(level),
       weight: scoreTea(t, {
         primary: primary,
         secondary: opt.secondary,
@@ -173,19 +206,50 @@ function recommend(primary, opt) {
       })
     });
   });
-  pool.sort(function (a, b) { return b.weight - a.weight; });
 
-  let result = pool.slice(0, limit).map(function (x) { return x.tea; });
+  const byTierThenWeight = function (a, b) {
+    return a.tier - b.tier || b.weight - a.weight;
+  };
+  pool.sort(byTierThenWeight);
 
-  // 兜底：主推不足时用平和质温和茶补齐
-  if (result.length < limit) {
+  const picks = pool.slice(0, limit).map(function (x) { return x.tea; });
+
+  // 兜底：主推不足时用平和质温和茶补齐（同样先剔除禁用/忌用）
+  if (picks.length < limit) {
+    const extra = [];
     teas.byConstitution('pinghe').forEach(function (t) {
-      if (result.length < limit && !result.some(function (r) { return r.id === t.id; })) {
-        result.push(t);
+      if (opt.exclude && opt.exclude.indexOf(t.id) > -1) return;
+      if (picks.some(function (r) { return r.id === t.id; })) return;
+      if (extra.some(function (r) { return r.id === t.id; })) return;
+      const risk = opt.basic ? riskOf(t, opt.basic) : null;
+      const level = risk ? risk.level : '';
+      if (RISK_BLOCKED.indexOf(level) > -1) {
+        blocked.push({ tea: t, risk: risk });
+        return;
       }
+      extra.push({
+        tea: t,
+        tier: riskTier(level),
+        weight: scoreTea(t, {
+          primary: 'pinghe',
+          secondary: '',
+          season: season,
+          preferTags: opt.preferTags
+        })
+      });
+    });
+    extra.sort(byTierThenWeight);
+    extra.forEach(function (x) {
+      if (picks.length < limit) picks.push(x.tea);
     });
   }
-  return result;
+
+  return { picks: picks, blocked: blocked };
+}
+
+/** 只取推荐列表（多数调用方用这个） */
+function recommend(primary, opt) {
+  return recommendFull(primary, opt).picks;
 }
 
 /** 通过 id 列表取茶方详情 */
@@ -226,6 +290,176 @@ function constitutionByKeyword(text) {
   return best ? best.id : '';
 }
 
+/* ---------------- 症状 → 体质 → 茶方（统一映射表） ----------------
+ * 背景（审计 5.3）：同一个「睡不好」，量表分给阴虚/气虚/特禀，关键词全挂气郁，
+ * 茶方又分散在气郁(16) 与阴虚(8)，三处入口各说各话。
+ * 这里收敛成一份表：命中后**先返回鉴别要点**，让上层回跳到量表题或给出鉴别问句，
+ * 而不是跳过鉴别直接下结论。
+ * ------------------------------------------------------------------ */
+
+const SYMPTOM_MAP = [
+  {
+    id: 'sleep',
+    label: '睡眠不佳',
+    keywords: ['失眠', '睡不着', '入睡困难', '多梦', '睡不好', '早醒', '睡不踏实', '睡得浅', '易醒'],
+    candidates: [
+      { constitution: 'yinxu', distinguish: '伴手足心热、盗汗、口干咽燥', teas: ['baihe-sangshen', 'gouqi-maidong'] },
+      { constitution: 'qiyu', distinguish: '伴情绪低落、胸闷叹气、白天紧张', teas: ['moli-baihe', 'meigui-foshou'] },
+      { constitution: 'qixu', distinguish: '睡够时间却仍不解乏、白天没劲', teas: ['shanyao-lianzi'] }
+    ]
+  },
+  {
+    id: 'cold',
+    label: '畏寒怕冷',
+    keywords: ['怕冷', '手脚凉', '手脚冰凉', '畏寒', '暖身', '腹部发凉', '腰凉'],
+    candidates: [
+      { constitution: 'yangxu', distinguish: '喜热饮、大便偏稀、精神倦怠', teas: ['jiangzao-nuanyang', 'rougui-guiyuan'] },
+      { constitution: 'qixu', distinguish: '兼疲乏气短、说话没劲', teas: ['huangqi-dangshen', 'shanyao-lianzi'] },
+      { constitution: 'xueyu', distinguish: '面色偏暗、唇色暗、易有瘀青', teas: ['meigui-guihua'] }
+    ]
+  },
+  {
+    id: 'damp',
+    label: '湿重困重',
+    keywords: ['湿气', '祛湿', '身体沉', '沉重', '粘马桶', '大便黏', '浮肿', '舌苔厚腻', '困倦'],
+    candidates: [
+      { constitution: 'tanshi', distinguish: '腹型偏胖、舌苔白腻、痰多胸闷', teas: ['hongdou-yimi', 'chenpi-heye'] },
+      { constitution: 'shire', distinguish: '面油长痘、口苦口臭、舌苔黄腻', teas: ['jinyinhua-juhua', 'pugongying-yumixu'] }
+    ]
+  },
+  {
+    id: 'heat',
+    label: '上火燥热',
+    keywords: ['上火', '口苦', '口臭', '长痘', '痤疮', '口腔溃疡', '脸油', '出油'],
+    candidates: [
+      { constitution: 'shire', distinguish: '大便黏滞或干结、舌苔黄腻', teas: ['jinyinhua-juhua', 'pugongying-yumixu'] },
+      { constitution: 'yinxu', distinguish: '伴口干咽燥、手足心热、盗汗', teas: ['gouqi-maidong'] }
+    ]
+  },
+  {
+    id: 'tired',
+    label: '疲乏无力',
+    keywords: ['没力气', '乏力', '疲劳', '容易累', '没劲', '气短', '懒得说话', '出虚汗'],
+    candidates: [
+      { constitution: 'qixu', distinguish: '稍动即出汗、说话声音低弱、换季易感冒', teas: ['huangqi-dangshen', 'shanyao-lianzi'] },
+      { constitution: 'tanshi', distinguish: '伴身体沉重、腹部松软、大便黏腻', teas: ['hongdou-yimi'] },
+      { constitution: 'qiyu', distinguish: '伴情绪低落、对事情提不起兴趣', teas: ['meigui-foshou'] }
+    ]
+  },
+  {
+    id: 'dry',
+    label: '口干眼干',
+    keywords: ['口干', '咽干', '眼干', '眼涩', '总想喝水', '皮肤干', '口燥'],
+    candidates: [
+      { constitution: 'yinxu', distinguish: '伴手足心热、夜间出汗、舌红少苔', teas: ['gouqi-maidong', 'baihe-sangshen'] },
+      { constitution: 'shire', distinguish: '伴口苦口臭、面油长痘', teas: ['jinyinhua-juhua'] }
+    ]
+  },
+  {
+    id: 'mood',
+    label: '情绪郁结',
+    keywords: ['情绪', '压力', '郁闷', '叹气', '焦虑', '紧张', '心情差', '胸闷', '提不起兴趣'],
+    candidates: [
+      { constitution: 'qiyu', distinguish: '常感胸闷、喜欢叹气、咽喉有异物感', teas: ['meigui-foshou', 'moli-baihe'] },
+      { constitution: 'xueyu', distinguish: '面色晦暗、唇色偏暗、易有瘀青', teas: ['meigui-shanzha'] }
+    ]
+  },
+  {
+    id: 'stool',
+    label: '排便异常',
+    keywords: ['便溏', '大便稀', '不成形', '腹泻', '便秘', '排便用力', '大便干'],
+    candidates: [
+      { constitution: 'yangxu', distinguish: '偏稀、吃凉的就容易腹泻', teas: ['jiangzao-nuanyang'] },
+      { constitution: 'qixu', distinguish: '偏稀但伴疲乏、食欲偏差', teas: ['shanyao-lianzi'] },
+      { constitution: 'yinxu', distinguish: '偏干结、排便需要用力', teas: ['gouqi-maidong'] },
+      { constitution: 'tanshi', distinguish: '黏腻不畅、容易粘马桶', teas: ['chenpi-heye'] }
+    ]
+  },
+  {
+    id: 'allergy',
+    label: '过敏倾向',
+    keywords: ['过敏', '鼻炎', '荨麻疹', '红疹', '打喷嚏', '皮肤痒', '鼻痒', '换季过敏'],
+    candidates: [
+      { constitution: 'tebing', distinguish: '换季或接触花粉/尘螨时加重', teas: ['dazao-shanyao', 'wumei-shanzha'] }
+    ]
+  }
+];
+
+/**
+ * 按症状文本匹配统一映射表。
+ * @param {string} text 用户原话
+ * @returns {null|object} 命中的条目（含候选体质与鉴别要点）
+ */
+function symptomGuide(text) {
+  const t = text || '';
+  let best = null;
+  let bestHit = 0;
+  SYMPTOM_MAP.forEach(function (item) {
+    let hit = 0;
+    item.keywords.forEach(function (k) { if (t.indexOf(k) > -1) hit += k.length; });
+    if (hit > bestHit) { best = item; bestHit = hit; }
+  });
+  return best;
+}
+
+/* ---------------- 安全：茶方风险标注 ---------------- */
+
+/** 取风险等级在 LEVEL_ORDER 中的严格度（数字越大越严重） */
+function levelRank(level) {
+  const i = teas.LEVEL_ORDER.indexOf(level);
+  return i < 0 ? -1 : (teas.LEVEL_ORDER.length - i);
+}
+
+/**
+ * 计算某款茶方对给定基础信息的风险。
+ * @param {object} tea 茶方
+ * @param {object} basic profile.basic（含 drugs/conditions/stage/age）
+ * @returns {null|{level:string, items:Array, drugNotes:Array}} 无命中返回 null
+ */
+function riskOf(tea, basic) {
+  if (!tea || !basic) return null;
+  const items = teas.hitContraindications(tea, basic);
+  const keys = tea.drugInteraction || [];
+  const drugNotes = [];
+  const groups = [];
+  (basic.drugs || []).forEach(function (d) {
+    if (d.indexOf('抗凝') > -1) groups.push('anticoagulant');
+    if (d.indexOf('降糖') > -1) groups.push('glucoseDrug');
+    if (d.indexOf('甲状腺') > -1) groups.push('thyroid');
+    if (d.indexOf('免疫抑制') > -1) groups.push('immunosuppressant');
+    if (d.indexOf('镇静') > -1 || d.indexOf('抗抑郁') > -1) groups.push('sedative');
+  });
+  if (basic.stage === '孕期') groups.push('pregnant');
+  if (basic.stage === '哺乳期') groups.push('lactating');
+  // 甲状腺用药与「全库通用」提示：只要在服甲状腺药就提示间隔 ≥4 小时
+  if (groups.indexOf('thyroid') > -1) {
+    drugNotes.push(teas.DRUG_NOTES.thyroid);
+  }
+  groups.forEach(function (g) {
+    if (g === 'thyroid') return; // 已在上面统一提示
+    if (keys.indexOf(g) > -1 && teas.DRUG_NOTES[g]) drugNotes.push(teas.DRUG_NOTES[g]);
+  });
+  if (!items.length && !drugNotes.length) return null;
+  let level = '';
+  items.forEach(function (c) {
+    if (!level || levelRank(c.level) > levelRank(level)) level = c.level;
+  });
+  if (!level) level = '咨询医师';
+  return { level: level, items: items, drugNotes: drugNotes };
+}
+
+/** 由基础信息推导出「需要联动禁忌」的布尔标记（服务端最小化上行时用） */
+function riskFlags(basic) {
+  const b = basic || {};
+  const flags = { stage: false, chronic: false, allergy: false };
+  flags.stage = b.stage === '孕期' || b.stage === '哺乳期' || b.stage === '备孕中' || b.stage === '近期拟手术';
+  flags.chronic = !!(b.drugs && b.drugs.some(function (d) { return d.indexOf('以上都没有') === -1; })) ||
+    !!(b.conditions && b.conditions.some(function (c) { return c !== '以上都没有'; }));
+  flags.allergy = !!(b.allergy && b.allergy.trim()) ||
+    !!(b.allergens && b.allergens.some(function (a) { return a !== '以上都没有'; }));
+  return flags;
+}
+
 module.exports = {
   MAX_SCORE: MAX_SCORE,
   reload: reload,
@@ -235,7 +469,14 @@ module.exports = {
   seasonOf: seasonOf,
   seasonName: seasonName,
   recommend: recommend,
+  recommendFull: recommendFull,
+  RISK_BLOCKED: RISK_BLOCKED,
+  riskTier: riskTier,
   picks: picks,
   search: search,
-  constitutionByKeyword: constitutionByKeyword
+  constitutionByKeyword: constitutionByKeyword,
+  SYMPTOM_MAP: SYMPTOM_MAP,
+  symptomGuide: symptomGuide,
+  riskOf: riskOf,
+  riskFlags: riskFlags
 };

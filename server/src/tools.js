@@ -17,7 +17,7 @@ const rag = require('./rag.js');
 const safety = require('./safety.js');
 
 const TAG_LABEL = {
-  damp: '湿气重/身体沉重', weight: '体重管理', cold: '怕冷/手脚冰凉', heat: '容易上火',
+  damp: '湿气重/身体沉重', weight: '饮食清淡期', cold: '怕冷/手脚冰凉', heat: '容易上火',
   sleep: '入睡困难/多梦', stayup: '经常熬夜', dry: '口干咽燥', tired: '容易疲乏', skin: '气色不佳'
 };
 
@@ -235,6 +235,15 @@ const EXECUTORS = {
     if (cid === 'xueyu') warn.push('经期量多时请先暂停');
     blocks.push(noticeBlock((warn.length ? warn.join('；') + '。' : '') + agent.DISCLAIMER, 'warn'));
 
+    // 服务端拿不到用户的用药明细（上行档案做了最小化，只传布尔风险标记），
+    // 所以这里只能给「去找谁」的提示，具体哪款需要留意由端上按 contraindications 计算。
+    if (ctx.profile && ctx.profile.risk && (ctx.profile.risk.chronic || ctx.profile.risk.stage)) {
+      blocks.push(noticeBlock('你档案里有基础健康情况或用药物记录。具体到某一款是否适合，请以小程序里该茶方详情页的提示为准，必要时先咨询主治医师或药师。', 'warn'));
+    }
+    if (list.some(function (t) { return t.isPilot; })) {
+      blocks.push(noticeBlock('推荐的配方中含试点物质（黄芪/党参），非全国通用食材：非试点地区及孕期、哺乳期、14 岁以下请咨询专业人员。', 'warn'));
+    }
+
     if (ctx.profile && ctx.profile.constitutionId) blocks.push(chipsBlock(CHIPS_AFTER_RECOMMEND));
     else blocks.push(ctaBlock('补充一次体质测评', '做完测评，推荐会更贴合你的兼夹体质与季节变化', 'assess', '去测评'));
     if (!ctx.profile || !ctx.profile.constitutionId) blocks.push(chipsBlock(CHIPS_AFTER_RECOMMEND));
@@ -258,6 +267,14 @@ const EXECUTORS = {
             effects: t.effects,
             scenes: t.scenes,
             caution: t.caution,
+            contraindications: (t.contraindications || []).map(function (x) {
+              return x.level + '·' + x.keyword + '：' + x.reason;
+            }),
+            usageCap: t.usageCap,
+            dosageBasis: t.dosageBasis,
+            isPilot: !!t.isPilot,
+            sugarContent: !!t.sugarContent,
+            courseLimit: t.courseLimit,
             matchReason: t.constitution === cid ? '与主导体质直接对应' : '与当前季节/关注点互补'
           };
         })
@@ -272,11 +289,18 @@ const EXECUTORS = {
     const lines = [
       t.name + '：' + t.subtitle,
       '性味：' + t.nature + '，' + t.taste + '；适配寒热：' + (owner ? owner.name : ''),
-      '配方：' + t.ingredients.map(function (i) { return i.name + ' ' + i.amount + '（' + i.role + '）'; }).join('、'),
+      '配方：' + t.ingredients.map(function (i) { return i.name + ' ' + i.amount + '（' + i.role + '）'; }).join('、') +
+        '（' + (t.dosageBasis || '代茶饮用量') + '，' + (t.usageCap || '单味 ≤8g · 全方 ≤20g/日') + '）',
       '冲泡：' + t.brew.water + '，' + t.brew.steps.join('；') + '，焖泡 ' + t.brew.time,
-      '饮用：' + t.brew.best + '，频次 ' + t.brew.frequency,
-      '注意：' + t.caution.join('；')
+      '饮用：' + t.brew.best + '，频次 ' + t.brew.frequency +
+        (t.courseLimit && t.courseLimit.maxWeeks ? '，连续 ' + t.courseLimit.maxWeeks + ' 周后停 ' + t.courseLimit.restWeeks + ' 周' : ''),
+      '注意：' + t.caution.join('；'),
+      '不适用人群：' + (t.contraindications || []).map(function (x) {
+        return x.level + x.keyword + '（' + x.reason + '）';
+      }).join('；')
     ];
+    if (t.isPilot) lines.push('试点物质：含黄芪/党参，非全国通用食材，非试点地区及孕期、哺乳期、14 岁以下请咨询专业人员。');
+    lines.push('提示：养生茶与西药间隔 ≥1 小时；左甲状腺素、铁剂、钙剂间隔 ≥4 小时。');
     return {
       blocks: [textBlock(lines.join('\n')), teasBlock([t.id]), noticeBlock(agent.DISCLAIMER, 'warn')],
       result: {
@@ -284,7 +308,10 @@ const EXECUTORS = {
         tea: {
           id: t.id, name: t.name, nature: t.nature, taste: t.taste,
           ingredients: t.ingredients, effects: t.effects, scenes: t.scenes,
-          brew: t.brew, caution: t.caution
+          brew: t.brew, caution: t.caution,
+          contraindications: t.contraindications || [],
+          usageCap: t.usageCap, dosageBasis: t.dosageBasis,
+          isPilot: !!t.isPilot, sugarContent: !!t.sugarContent, courseLimit: t.courseLimit
         }
       }
     };

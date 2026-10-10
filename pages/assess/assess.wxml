@@ -114,6 +114,74 @@
       </view>
     </block>
 
+    <!-- STEP 3 用药与过敏原（影响茶方安全性，务必保留显性入口） -->
+    <block wx:elif="{{kind === 'basic3'}}">
+      <view class="head">
+        <view class="head__title">最后几个安全问题</view>
+        <view class="head__desc">只用于提示可能相互影响的食材，不做任何诊断；不确定可以跳过。</view>
+      </view>
+
+      <view class="field">
+        <view class="field__label">正在服用的西药<text class="field__sub">可多选</text></view>
+        <view class="opt-row">
+          <view
+            wx:for="{{drugs}}"
+            wx:key="*this"
+            class="opt-chip {{drugSel[item] ? 'is-on' : ''}}"
+            data-v="{{item}}"
+            bindtap="toggleDrug"
+          >{{item}}</view>
+        </view>
+        <view class="field__tip">
+          养生茶与西药建议间隔 ≥1 小时；左甲状腺素、铁剂、钙剂间隔 ≥4 小时。
+        </view>
+      </view>
+
+      <view class="field">
+        <view class="field__label">正在服用的补充剂<text class="field__sub">可多选</text></view>
+        <view class="opt-row">
+          <view
+            wx:for="{{supplements}}"
+            wx:key="*this"
+            class="opt-chip {{suppSel[item] ? 'is-on' : ''}}"
+            data-v="{{item}}"
+            bindtap="toggleSupp"
+          >{{item}}</view>
+        </view>
+      </view>
+
+      <view class="field">
+        <view class="field__label">过敏原<text class="field__sub">可多选</text></view>
+        <view class="opt-row">
+          <view
+            wx:for="{{allergens}}"
+            wx:key="*this"
+            class="opt-chip {{allergenSel[item] ? 'is-on' : ''}}"
+            data-v="{{item}}"
+            bindtap="toggleAllergen"
+          >{{item}}</view>
+        </view>
+      </view>
+
+      <view class="field" wx:if="{{gender === '女'}}">
+        <view class="field__label">月经情况<text class="field__sub">选填</text></view>
+        <view class="opt-row">
+          <view
+            wx:for="{{menses}}"
+            wx:key="*this"
+            class="opt-chip {{mensesSel === item ? 'is-on' : ''}}"
+            data-v="{{item}}"
+            bindtap="pickMenses"
+          >{{item}}</view>
+        </view>
+      </view>
+
+      <view class="assess-note">
+        <icon name="shield" size="{{26}}" color="#98A69C" weight="{{1.7}}" />
+        <text>以上信息只保存在你本机、不会上传；命中的配方会在结果页与详情页给出对应的饮用提示。</text>
+      </view>
+    </block>
+
     <!-- STEP 3+ 题目 -->
     <block wx:else>
       <view class="head">

@@ -65,6 +65,52 @@ const TAG_FALLBACK = {
   skin: 'pinghe'
 };
 
+/**
+ * 常识问答的命中规则。
+ *
+ * 刻意**不按数组下标**引用（原来的写法是 i: 0..9），因为 FAQ 会持续扩充，
+ * 一旦在中间插入条目，所有下标全错位、答非所问，而且不会报错。
+ * 这里改成「关键词 → 问题文本片段」，由 matchFaq() 去 data/knowledge.js 里找，
+ * 扩条目只需追加，不需要动这张表。
+ * 顺序即优先级：越靠前越优先命中。
+ */
+const FAQ_KEYS = [
+  { k: ['一起泡', '混着', '搭配泡', '能一起喝'], q: '几款茶可以混在一起泡吗' },
+  { k: ['隔夜', '第二天', '放一夜', '放多久'], q: '泡好的茶可以放到第二天吗' },
+  { k: ['西药', '和药', '吃药', '服药', '用药', '隔多久', '间隔', '降压药', '降糖药', '降脂药'], q: '能和西药一起喝吗' },
+  { k: ['抗凝', '阿司匹林', '华法林', '氯吡格雷'], q: '抗凝、抗血小板药' },
+  { k: ['甲状腺'], q: '甲状腺药' },
+  { k: ['免疫抑制', '激素'], q: '免疫抑制剂' },
+  { k: ['安神', '抗抑郁', '催眠', '镇静'], q: '安神类、抗抑郁药' },
+  { k: ['血压'], q: '高血压' },
+  { k: ['血糖', '糖高'], q: '血糖偏高' },
+  { k: ['肝肾', '肾功能', '肝功能'], q: '有肝肾疾病' },
+  { k: ['痛风', '尿酸'], q: '痛风' },
+  { k: ['手术'], q: '手术前还能喝吗' },
+  { k: ['代替药', '替代药', '保健品', '能当药'], q: '当药或保健品用吗' },
+  { k: ['一天能喝', '一天几款', '喝几款'], q: '一天能喝几款' },
+  { k: ['选购', '怎么买', '买什么好', '硫熏'], q: '药材怎么选购' },
+  { k: ['存放', '保存', '保质', '受潮'], q: '药材怎么存放' },
+  { k: ['炒过', '炮制', '为什么要炒'], q: '薏苡仁为什么要炒' },
+  { k: ['放多少', '一次放', '每杯放'], q: '一款茶方一次要放多少' },
+  { k: ['干品', '鲜品', '鲜的'], q: '干品和鲜品' },
+  { k: ['试点物质', '试点'], q: '什么是试点物质' },
+  { k: ['剂量', '吃多少'], q: '为什么茶饮不给具体的保健剂量建议' },
+  { k: ['会变吗', '复测', '多久变'], q: '体质会变吗' },
+  { k: ['兼夹'], q: '兼夹体质' },
+  { k: ['舌象', '脉象', '把脉'], q: '舌象和脉象' },
+  { k: ['为什么是倾向', '为什么不是', '判定吗'], q: '为什么测出来是「倾向」' },
+  { k: ['看病依据', '给医生看', '能就医'], q: '测评结果能作为看病的依据吗' },
+  { k: ['每天', '天天喝', '长期喝', '可以常喝'], q: '养生茶可以每天喝吗' },
+  { k: ['什么时候喝', '什么时间', '几点喝'], q: '一天中什么时间喝比较好' },
+  { k: ['经期', '月经', '大姨妈'], q: '经期可以喝养生茶吗' },
+  { k: ['怀孕', '孕期', '哺乳', '喂奶'], q: '孕期、哺乳期能喝吗' },
+  { k: ['测评准', '准不准', '准吗', '靠谱吗'], q: '体质测评的结果准吗' },
+  { k: ['多久见效', '喝多久', '多长时间有效', '有效果吗'], q: '喝多久能感受到变化' },
+  { k: ['一直喝', '长期同一款', '换着喝'], q: '同一款茶可以一直喝下去吗' },
+  { k: ['不舒服', '拉肚子', '喝了难受'], q: '喝了之后觉得不舒服怎么办' }
+];
+
 const SEASON_WORDS = [
   { re: /(春天|春季|春夏|回暖)/, s: '春', name: '春季', tip: '春季重在疏肝理气、舒展气机，适合气味芬芳、性质平和的茶饮。' },
   { re: /(夏天|夏季|暑热|三伏|天气热)/, s: '夏', name: '夏季', tip: '夏季湿热并重，适合清爽利湿的茶饮，但不宜过度贪凉。' },
@@ -189,10 +235,28 @@ function respond(input, ctx) {
   if (MY_TYPE_RE.test(text)) {
     if (state.profile && state.profile.constitutionId) {
       const c = constitutions.getOr(state.profile.constitutionId);
-      messages.push(t('根据你上次的测评，主导体质是「' + c.name + '」，' + state.profile.levelText + '。'));
+      messages.push(t('根据你上次的测评，体质倾向更接近「' + c.name + '」，' + state.profile.levelText + '。'));
       messages.push(t(c.brief + '\n\n调理思路：' + c.principle));
-      const list = engine.recommend(c.id, { season: engine.seasonOf(), limit: 2 });
-      messages.push(teasMsg(list.map(function (x) { return x.id; })));
+      if (c.tongue) messages.push(t('可以顺便对一下舌象：' + c.tongue + '。'));
+      const rf = engine.recommendFull(c.id, {
+        season: engine.seasonOf(),
+        limit: 2,
+        basic: state.profile.basic || null
+      });
+      if (rf.picks.length) {
+        messages.push(teasMsg(rf.picks.map(function (x) { return x.id; })));
+        if (rf.blocked.length) {
+          messages.push(notice('按你档案里填写的阶段与用药情况，' +
+            rf.blocked.map(function (b) { return b.tea.name + '（' + b.risk.level + '）'; }).join('、') +
+            ' 不建议饮用，已从推荐中排除。', 'warn'));
+        }
+      } else if (rf.blocked.length) {
+        messages.push(t('按你档案里填写的阶段与用药情况，当前方向上暂时没有适合的茶方 —— ' +
+          rf.blocked.map(function (b) { return b.tea.name + '（' + b.risk.level + '）'; }).join('、') +
+          ' 已排除。等特殊时期结束、或用药方案调整后，我再重新给你配。'));
+      } else {
+        messages.push(t('这个方向上暂时没有匹配的茶方，可以换个说法再问问我。'));
+      }
       messages.push(t(DISCLAIMER, { small: true }));
       messages.push(chips([
         { label: '重新测评', action: 'assess' },
@@ -273,6 +337,26 @@ function respond(input, ctx) {
     });
   }
 
+  /* 睡眠类问题先做鉴别再给茶方。
+   * 原因（审计 5.3）：量表把「睡不好」分给阴虚/气虚/特禀，关键词却全挂在气郁，
+   * 茶方又分散在气郁(茉莉百合)与阴虚(百合桑椹) —— 三处入口各说各话。
+   * 这里统一走 engine.SYMPTOM_MAP：先问清方向，下一轮再落到具体茶方。 */
+  const guide = engine.symptomGuide(text);
+  if (guide && guide.id === 'sleep') {
+    const a = guide.candidates[0];
+    const b = guide.candidates[1];
+    messages.push(t('「睡不好」这件事，方向不止一个。同样是睡不好，一种偏向身体在燥、在发热，另一种偏向情绪没放下。'));
+    messages.push(t('你可以对一下：如果 ' + a.distinguish + '，更接近「' + constitutions.getOr(a.constitution).name +
+      '」的方向；如果 ' + b.distinguish + '，则更接近「' + constitutions.getOr(b.constitution).name + '」。'));
+    messages.push(t('告诉我更接近哪一种，我再给你对应的茶方；也可以直接做一次快速测评，让结果更稳。'));
+    messages.push(chips([
+      { label: '手足心热、盗汗', text: '我手心脚心发热，晚上还容易出汗，口干' },
+      { label: '情绪低落、爱叹气', text: '我情绪比较低落，老想叹气，胸口发闷' },
+      { label: '做一次快速测评', action: 'assess' }
+    ]));
+    return { messages: messages, ctx: state };
+  }
+
   if (adjust.length) {
     const tags = adjust.map(function (x) { return x.tag; });
     let cid = (state.profile && state.profile.constitutionId) || engine.constitutionByKeyword(text);
@@ -288,7 +372,7 @@ function respond(input, ctx) {
       if (tags.indexOf('sleep') > -1) tips.push('入睡困难时，建议把茶饮时间提前到睡前 1 小时以上，避免夜间频繁起夜。');
       if (tags.indexOf('cold') > -1) tips.push('怕冷的话，可以固定用生姜 2 片 + 红枣 3 枚作为基础，再视情况搭配。');
       if (tags.indexOf('damp') > -1) tips.push('祛湿类茶方建议放在上午饮用，同时减少甜食与冰饮，效果会更稳定。');
-      if (tags.indexOf('weight') > -1) tips.push('体重管理更适合从「减少含糖饮料 + 餐后一杯陈皮荷叶茶」这样的小习惯开始。');
+      if (tags.indexOf('weight') > -1) tips.push('想把饮食调整得更清爽，可以从「减少含糖饮料 + 餐后一杯陈皮荷叶茶」这样的小习惯开始；这里不提供任何体重或减重承诺。');
       if (tags.indexOf('skin') > -1) tips.push('气色与皮肤状态更依赖作息，建议先把入睡时间提前半小时，再配合温和茶饮。');
       if (tags.indexOf('tired') > -1) tips.push('容易疲乏时，补气类茶方建议小量长期，而不是一次加足量。');
       if (tags.indexOf('dry') > -1) tips.push('口干咽燥时，优先选择麦冬、玉竹、百合这类甘润食材，避免过烫饮用。');
@@ -323,23 +407,35 @@ function respond(input, ctx) {
 function finishRecommend(messages, state, cid, opt) {
   opt = opt || {};
   const c = constitutions.getOr(cid);
-  const list = engine.recommend(cid, {
+  const basic = (state.profile && state.profile.basic) || null;
+  const rf = engine.recommendFull(cid, {
     season: opt.season || engine.seasonOf(),
     limit: opt.limit || 2,
-    exclude: opt.exclude || []
+    exclude: opt.exclude || [],
+    basic: basic
   });
+  const list = rf.picks;
 
   if (!opt.silentIntro) {
     if (!state.profile) {
       messages.push(t('听起来更接近「' + c.name + '」的日常养生方向。' + c.brief));
-    } else {
+    } else if (list.length) {
       messages.push(t('结合你的「' + c.name + '」体质，' + (opt.intro || '我给你挑了这两款当季更合适的茶方。')));
     }
   } else if (opt.intro) {
     messages.push(t(opt.intro));
   }
 
-  messages.push(teasMsg(list.map(function (x) { return x.id; })));
+  if (list.length) {
+    messages.push(teasMsg(list.map(function (x) { return x.id; })));
+  } else if (rf.blocked.length) {
+    // 「禁用/忌用」不推荐，但要说清为什么 —— 只把结果删掉会让用户以为库里有遗漏
+    messages.push(t('结合你的「' + c.name + '」体质，当前方向上暂时没有适合的茶方 —— ' +
+      rf.blocked.map(function (b) { return b.tea.name + '（' + b.risk.level + '）'; }).join('、') +
+      ' 已排除。等特殊时期结束、或用药方案调整后，我再重新给你配。'));
+  } else {
+    messages.push(t('这个方向上暂时没有匹配的茶方，换个说法，或者让我放宽一点条件再找找。'));
+  }
 
   const warn = [];
   if (c.id === 'shire') warn.push('偏凉性的茶饮不建议连续长期饮用');
@@ -347,6 +443,27 @@ function finishRecommend(messages, state, cid, opt) {
   if (c.id === 'xueyu') warn.push('经期量多时请先暂停');
   const base = warn.length ? warn.join('；') + '。' : '';
   messages.push(notice(base + DISCLAIMER, 'warn'));
+
+  // 逐款安全提示：只在用户档案里确实有用药/慢病/阶段时才出现
+  const risky = [];
+  if (basic) {
+    list.forEach(function (tea) {
+      const r = engine.riskOf(tea, basic);
+      if (!r) return;
+      const parts = r.items.map(function (i) { return i.keyword + '（' + i.level + '）'; });
+      risky.push(tea.name + '：' + parts.join('、'));
+    });
+  }
+  if (risky.length) {
+    messages.push(notice('结合你填写的情况，这几款请先看提示再决定：' + risky.join('；') + '。具体原因可在茶方详情页查看，必要时先咨询医师或药师。', 'warn'));
+  }
+  if (rf.blocked.length) {
+    messages.push(notice('另外这几款在你当前的情况下不建议饮用，已从推荐中排除：' +
+      rf.blocked.map(function (b) { return b.tea.name + '（' + b.risk.level + '）'; }).join('、') + '。', 'warn'));
+  }
+  if (list.some(function (x) { return x.isPilot; })) {
+    messages.push(notice('其中有配方含试点物质（黄芪/党参），非全国通用食材：非试点地区及孕期、哺乳期、14 岁以下请咨询专业人员。', 'warn'));
+  }
 
   if (!state.profile) {
     messages.push(cta('补充一次体质测评', '可以让后续推荐更贴合你的兼夹体质与季节变化', 'assess', '去测评'));
@@ -409,23 +526,12 @@ function matchIngredient(text) {
 }
 
 function matchFaq(text) {
-  const keys = [
-    { k: ['每天', '天天喝', '长期喝', '可以常喝'], i: 0 },
-    { k: ['什么时候喝', '什么时间', '几点喝', '时间喝'], i: 1 },
-    { k: ['经期', '月经', '大姨妈'], i: 2 },
-    { k: ['怀孕', '孕期', '哺乳', '喂奶'], i: 3 },
-    { k: ['隔夜', '第二天', '放一夜', '放多久'], i: 4 },
-    { k: ['混着', '一起泡', '搭配泡', '能一起'], i: 5 },
-    { k: ['测评准', '准不准', '准吗', '靠谱吗', '准不准确'], i: 6 },
-    { k: ['多久见效', '喝多久', '多长时间有效', '有效果吗'], i: 7 },
-    { k: ['一直喝', '长期同一款', '换着喝'], i: 8 },
-    { k: ['不舒服', '拉肚子', '喝了难受', '过敏怎么办'], i: 9 }
-  ];
-  for (let i = 0; i < keys.length; i++) {
-    const m = keys[i];
-    if (m.k.some(function (x) { return text.indexOf(x) > -1; })) {
-      return knowledge.faq[m.i];
-    }
+  const list = knowledge.faq;
+  for (let i = 0; i < FAQ_KEYS.length; i++) {
+    const m = FAQ_KEYS[i];
+    if (!m.k.some(function (x) { return text.indexOf(x) > -1; })) continue;
+    const hit = list.filter(function (f) { return f.q.indexOf(m.q) > -1; })[0];
+    if (hit) return hit;
   }
   return null;
 }

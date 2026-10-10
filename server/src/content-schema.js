@@ -27,7 +27,12 @@ const DISCLAIM_PHRASES = [
   '不可替代药物',
   '不构成任何医疗建议',
   '请及时前往正规医疗机构就诊',
-  '请及时就医'
+  '请及时就医',
+  // 「主治医师」是职务名，与「主治（适应症）」同形不同义。
+  // 风控词表里「主治」要替换成「适用方向」，但不该把「咨询主治医师」也一起拦掉，
+  // 否则每处就医引导都得绕开这个词——反而促使用户看到更含糊的表述。
+  '主治医师',
+  '主治医生'
 ];
 
 /**
@@ -47,6 +52,24 @@ const DISEASE_RE = /(癌|肿瘤|白血病|尿毒症|肝硬化|糖尿病|高血�
 /** 单味食材日常养生参考剂量上限（g），超出告警，严重超出阻断 */
 const DOSE_WARN = 10;
 const DOSE_BLOCK = 30;
+
+/* ---------------- 安全字段的共享枚举 ---------------- */
+
+/** 禁忌人群分组键：与 data/teas.js 的 hitContraindications 一一对应 */
+const GROUPS = [
+  'pregnant', 'lactating', 'child', 'menstruation', 'hypertension', 'diabetes',
+  'kidney', 'anticoagulant', 'lithium', 'thyroid', 'immunosuppressant', 'sedative',
+  'gout', 'preop', 'glucoseDrug', 'diuretic'
+];
+
+/** 禁忌等级：由重到轻 */
+const LEVELS = ['禁用', '忌用', '慎用', '减量', '咨询医师'];
+
+/** 用药交互键：与 data/teas.js 的 DRUG_NOTES 一一对应 */
+const DRUG_KEYS = ['thyroid', 'anticoagulant', 'lithium', 'glucoseDrug', 'immunosuppressant', 'sedative', 'diuretic'];
+
+/** 月经情况取值：与 data/questions.js 的 BASIC.menses 保持一致 */
+const MENSES = ['规律', '不太规律', '痛经明显', '经量偏多', '经量偏少', '已停经/不适用'];
 
 /* ---------------- 字段描述 ---------------- */
 
@@ -81,7 +104,28 @@ const SCHEMA = {
           { key: 'frequency', label: '建议频次', type: 'string' }
         ] },
         { key: 'caution', label: '注意事项', type: 'stringArray', required: true, min: 1, max: 6, maxItemLen: 50 },
-        { key: 'tags', label: '标签', type: 'stringArray', max: 6, maxItemLen: 8 }
+        { key: 'tags', label: '标签', type: 'stringArray', max: 6, maxItemLen: 8 },
+        { key: 'dosageBasis', label: '剂量口径', type: 'string', max: 12, hint: '本库统一为「代茶饮用量」，不展示药用量' },
+        { key: 'usageCap', label: '用量上限', type: 'string', max: 24, hint: '如「≤8g/味 · ≤20g/日」' },
+        { key: 'sugarContent', label: '含糖食材', type: 'boolean', hint: '红枣/桂圆/桑椹等，供血糖人群动态提示' },
+        { key: 'isPilot', label: '含试点物质', type: 'boolean', hint: '黄芪/党参 = true，非全国通用食材' },
+        { key: 'drugInteraction', label: '用药交互', type: 'stringArray', max: 6,
+          enum: DRUG_KEYS, hint: '命中后由端上按 DRUG_NOTES 给出「间隔多久、找谁」的提示' },
+        { key: 'sharedIngredient', label: '跨方共用食材', type: 'stringArray', max: 6, maxItemLen: 10,
+          hint: '同日多饮时的叠加提醒' },
+        { key: 'courseLimit', label: '疗程上限', type: 'group', fields: [
+          { key: 'maxWeeks', label: '连续上限（周）', type: 'number', min: 1, max: 12 },
+          { key: 'restWeeks', label: '停饮间隔（周）', type: 'number', min: 1, max: 12 }
+        ] },
+        { key: 'contraindications', label: '禁忌人群', type: 'objectArray', max: 8,
+          item: { idKey: '__none__', titleKey: 'keyword', fields: [
+            { key: 'group', label: '人群分组', type: 'enum', required: true, options: { list: GROUPS } },
+            { key: 'level', label: '等级', type: 'enum', required: true, options: { list: LEVELS } },
+            { key: 'reason', label: '原因', type: 'string', required: true, max: 40 },
+            { key: 'keyword', label: '展示词', type: 'string', required: true, max: 10 },
+            { key: 'mensesOnly', label: '仅当月经为', type: 'enum', options: { list: MENSES },
+              hint: '留空＝无条件命中。仅「经量多者暂缓」这类条件性提醒才填，否则会把部分人的提醒错标成全员禁忌' }
+          ] } }
       ] }
     }
   },
@@ -104,7 +148,15 @@ const SCHEMA = {
         { key: 'teaAdvice', label: '茶饮建议', type: 'text', required: true, max: 100 },
         { key: 'life', label: '起居建议', type: 'stringArray', min: 1, max: 8, maxItemLen: 40 },
         { key: 'keywords', label: '识别关键词', type: 'stringArray', min: 1, max: 20, maxItemLen: 10,
-          hint: '用户口语命中这些词即判定为该体质，改动会直接影响对话识别' }
+          hint: '用户口语命中这些词即判定为该体质，改动会直接影响对话识别' },
+        { key: 'bodyFeature', label: '形体特征', type: 'text', max: 60, hint: '对齐国标的「形体」维度' },
+        { key: 'psych', label: '心理特征', type: 'text', max: 60 },
+        { key: 'tongue', label: '舌象', type: 'text', max: 40, hint: '禁用疾病预测措辞，只描述可自察的现象' },
+        { key: 'pulse', label: '脉象', type: 'text', max: 40, hint: '一律附「自摸仅作参考，不能替代面诊」' },
+        { key: 'adaptability', label: '环境适应', type: 'text', max: 60 },
+        { key: 'tendencyNotice', label: '日常留意方向', type: 'stringArray', max: 5, maxItemLen: 40,
+          hint: '只用「注意/宜/可」的方向性表述，禁止「易患某病/防治某病」' },
+        { key: 'keyPoints', label: '速辨要点', type: 'stringArray', max: 5, maxItemLen: 30 }
       ] }
     }
   },
@@ -129,7 +181,12 @@ const SCHEMA = {
         { key: 'genders', label: '性别', type: 'stringArray', required: true, min: 1 },
         { key: 'ages', label: '年龄段', type: 'stringArray', required: true, min: 1 },
         { key: 'conditions', label: '既往情况', type: 'stringArray', required: true, min: 1 },
+        { key: 'drugs', label: '在用西药', type: 'stringArray', min: 1,
+          hint: '最关键的用药安全开关，决定能否推山楂/玫瑰花草类、利尿类；改动需与 tea.contraindications 保持对应' },
+        { key: 'supplements', label: '在用补充剂', type: 'stringArray', min: 1 },
         { key: 'stages', label: '特殊阶段', type: 'stringArray', required: true, min: 1 },
+        { key: 'allergens', label: '过敏原', type: 'stringArray', min: 1 },
+        { key: 'menses', label: '月经情况', type: 'stringArray', min: 1, hint: '仅女性显示，补全血瘀/气郁判定线索' },
         { key: 'tastes', label: '口味偏好', type: 'stringArray', required: true, min: 1 }
       ] }
     ] }
@@ -147,7 +204,27 @@ const SCHEMA = {
           { key: 'meridian', label: '归经', type: 'string' },
           { key: 'effect', label: '主要作用', type: 'string', required: true, max: 30 },
           { key: 'use', label: '适用人群', type: 'text', max: 100 },
-          { key: 'caution', label: '注意事项', type: 'text', max: 100 }
+          { key: 'caution', label: '注意事项', type: 'text', max: 100 },
+          /* ---- 安全卡：缺了这些，采了慢病名也无法筛方 ---- */
+          { key: 'doseDailyMax', label: '每日上限', type: 'string', max: 20, hint: '如「≤6g」' },
+          { key: 'doseForm', label: '形态换算', type: 'string', max: 60, hint: '干品克数与鲜品的折算，避免用户自购混淆' },
+          { key: 'drugInteraction', label: '用药交互', type: 'stringArray', max: 4, enum: DRUG_KEYS },
+          { key: 'chronicFlag', label: '需留意慢病', type: 'stringArray', max: 4, enum: GROUPS },
+          { key: 'nutrients', label: '营养标签', type: 'group', fields: [
+            { key: 'sugar', label: '含糖', type: 'boolean' },
+            { key: 'potassium', label: '钾', type: 'enum', options: { list: ['low', 'mid', 'high'] } },
+            { key: 'vitaminK', label: '维生素K', type: 'enum', options: { list: ['low', 'mid', 'high'] } },
+            { key: 'oxalate', label: '草酸', type: 'enum', options: { list: ['low', 'mid', 'high'] } }
+          ] },
+          { key: 'courseLimit', label: '疗程上限', type: 'string', max: 40 },
+          { key: 'specialPop', label: '特殊人群', type: 'group', fields: [
+            { key: 'child', label: '儿童', type: 'string', max: 30 },
+            { key: 'pregnant', label: '孕期', type: 'string', max: 30 },
+            { key: 'preop', label: '术前', type: 'string', max: 30 }
+          ] },
+          { key: 'allergen', label: '过敏提示', type: 'string', max: 40 },
+          { key: 'evidenceLevel', label: '证据强度', type: 'string', max: 30,
+            hint: '如「传统应用为主，现代证据有限」，避免 effect 被读成疗效' }
         ] } },
       { key: 'faq', label: '茶饮常识', type: 'objectArray', min: 1,
         item: { titleKey: 'q', fields: [
@@ -165,7 +242,14 @@ const SCHEMA = {
         { key: 'name', label: '食材名', type: 'string', required: true, max: 10 },
         { key: 'category', label: '分类', type: 'string', required: true, max: 10 },
         { key: 'part', label: '使用部位', type: 'string', max: 10 },
-        { key: 'alias', label: '别名', type: 'string', max: 10 }
+        { key: 'alias', label: '别名', type: 'string', max: 10 },
+        { key: 'usageCap', label: '每日代茶上限', type: 'string', max: 16 },
+        { key: 'contraindicatedGroups', label: '禁忌人群', type: 'stringArray', max: 6, enum: GROUPS },
+        { key: 'drugInteraction', label: '用药交互', type: 'stringArray', max: 4, enum: DRUG_KEYS },
+        { key: 'sugarContent', label: '含糖', type: 'boolean' },
+        { key: 'isPilot', label: '试点物质', type: 'boolean', hint: '黄芪/党参 = true，必须配 note 兜底文案' },
+        { key: 'catVersion', label: '目录版本', type: 'string', max: 60 },
+        { key: 'note', label: '目录批注', type: 'text', max: 200, hint: '试点物质的合规说明写在这里' }
       ] }
     }
   }
@@ -243,6 +327,11 @@ function checkPrimitive(field, value, path, ctx) {
     return;
   }
 
+  if (field.type === 'boolean') {
+    if (typeof value !== 'boolean') addError(ctx, path, field.label + ' 只能是 true / false');
+    return;
+  }
+
   if (field.type === 'enum') {
     const allowed = allowedValues(field, ctx);
     if (allowed.length && allowed.indexOf(value) < 0) {
@@ -266,7 +355,7 @@ function walk(field, value, path, ctx) {
     return;
   }
 
-  if (field.type === 'string' || field.type === 'text' || field.type === 'number' || field.type === 'enum') {
+  if (field.type === 'string' || field.type === 'text' || field.type === 'number' || field.type === 'enum' || field.type === 'boolean') {
     return checkPrimitive(field, value, path, ctx);
   }
 

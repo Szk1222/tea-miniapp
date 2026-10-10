@@ -12,6 +12,10 @@
  *
  * 降级原则：服务端不可达、缓存损坏、字段不全 —— 一律静默回落到内置内容，
  * 用户侧只会看到「内容没更新」，不会看到报错。
+ *
+ * 隐私说明：内容库是公开数据（茶方/食材/FAQ），下拉 payload 不含任何用户信息，
+ * 因此 refresh() **不受「AI 增强」开关约束** —— 关掉 AI 的用户同样要能拿到内容更新。
+ * 涉及用户信息的链路（对话、档案上送）才由 store.getAiEnabled() 严格把关。
  */
 
 const CFG = require('./config.js');
@@ -56,13 +60,14 @@ function bootstrap() {
 /**
  * 异步拉取内容更新。
  * @returns {Promise<{status:string, version?:number, counts?:object}>}
- *   status: applied | unchanged | skipped | failed
+ *   status: applied | unchanged | failed
+ *   （刻意不返回 skipped：内容下拉不受 AI 开关约束，见文件头「隐私说明」）
  */
 function refresh() {
   return new Promise(function (resolve) {
-    // 用户关掉 AI 增强时不发任何网络请求（与对话链路的隐私承诺保持一致）
-    if (!store.getAiEnabled()) return resolve({ status: 'skipped', reason: 'ai-disabled' });
-
+    // 注意：这里**刻意不检查 store.getAiEnabled()**。
+    // 内容库是公开数据、payload 不含用户信息，若拿 AI 开关当闸门，
+    // 默认关闭 AI 的用户将永远收不到后台更新的内容，内容下发机制形同虚设。
     const currentVersion = overlay.getVersion();
 
     wx.request({

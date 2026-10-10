@@ -99,6 +99,16 @@
   font-size: 26rpx;
 }
 
+.field__tip {
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: #8A6524;
+  line-height: 1.6;
+  padding: 16rpx 20rpx;
+  border-radius: 16rpx;
+  background: #FBF4E6;
+}
+
 /* ---------------- 选项 ---------------- */
 .opt-col {
   display: flex;

@@ -109,14 +109,10 @@ async function main() {
     CFG.API_BASE = BASE;
     console.log('服务端子进程就绪：' + BASE);
 
-    console.log('\n【合规：未经单独同意 → 一律不外发】');
+    console.log('\n【合规：未经单独同意，AI 增强开关不生效】');
     // 还原一个「老版本残留」的场景：AI 开关是开的，但从未做过单独同意
     store.setAiEnabled(true);
     ok('未同意时 getAiEnabled 仍为 false', store.getAiEnabled() === false, store.getAiEnabled());
-    const beforeConsent = requestCount;
-    const rConsent = await contentClient.refresh();
-    ok('状态 skipped', rConsent.status === 'skipped' && rConsent.reason === 'ai-disabled', rConsent.status);
-    ok('没有发出网络请求', requestCount === beforeConsent);
     // 模拟用户在对话页点「同意并开启」
     store.setAiConsent(true);
     ok('同意后开关才生效', store.getAiEnabled() === true, store.getAiEnabled());
@@ -124,7 +120,7 @@ async function main() {
     console.log('\n【首次启动：无缓存 → 用内置内容】');
     let r = contentClient.bootstrap();
     ok('未套用缓存', r.applied === false, r.reason);
-    ok('仍是内置茶方 18 款', teas.total === 18, teas.total);
+    ok('仍是内置茶方 23 款', teas.total === 23, teas.total);
     ok('本进程内容版本为 0', overlay.getVersion() === 0, overlay.getVersion());
 
     console.log('\n【后台发布新内容（改一款文案 + 新增一款茶方）】');
@@ -142,12 +138,12 @@ async function main() {
       body: JSON.stringify({ value: list, actor: 'client-smoke' })
     })).json();
     ok('发布成功', pub.ok, 'v' + pub.version);
-    ok('本进程仍是内置内容（端服确实分离）', teas.total === 18, teas.total);
+    ok('本进程仍是内置内容（端服确实分离）', teas.total === 23, teas.total);
 
     console.log('\n【小程序拉取更新 → 立即生效】');
     r = await contentClient.refresh();
     ok('状态 applied', r.status === 'applied', r.reason || ('v' + r.version));
-    ok('茶方变成 19 款', teas.total === 19, teas.total);
+    ok('茶方变成 24 款', teas.total === 24, teas.total);
     ok('新茶方可被检索到', !!teas.get('smoke-new-tea'), (teas.get('smoke-new-tea') || {}).name);
     ok('改写的副标题已生效', teas.get(list[0].id).subtitle === '疏肝和胃 · 后端下发版', teas.get(list[0].id).subtitle);
     ok('内容已写入缓存', !!store.getContentCache() && store.getContentCache().version === pub.version,
@@ -160,22 +156,23 @@ async function main() {
     console.log('\n【模拟重启 → 同步套用缓存】');
     r = contentClient.bootstrap();
     ok('套用成功', r.applied === true, 'v' + r.version);
-    ok('仍是下发后的内容', teas.total === 19 && teas.get(list[0].id).subtitle === '疏肝和胃 · 后端下发版');
+    ok('仍是下发后的内容', teas.total === 24 && teas.get(list[0].id).subtitle === '疏肝和胃 · 后端下发版');
 
     console.log('\n【服务端不可达 → 静默降级，内容不受影响】');
     forceNetworkFail = true;
     r = await contentClient.refresh();
     ok('状态 failed', r.status === 'failed', r.reason);
-    ok('内容保持不变', teas.total === 19 && teas.get('smoke-new-tea').name === '自检新茶');
+    ok('内容保持不变', teas.total === 24 && teas.get('smoke-new-tea').name === '自检新茶');
     ok('status() 记录了原因', contentClient.status().lastError.indexOf('request:fail') > -1, contentClient.status().lastError);
     forceNetworkFail = false;
 
-    console.log('\n【用户关闭 AI 增强 → 不发任何请求】');
+    console.log('\n【用户关闭 AI 增强 → 内容下拉仍照常（公开数据无个人信息）】');
     store.setAiEnabled(false);
     const before = requestCount;
     r = await contentClient.refresh();
-    ok('状态 skipped', r.status === 'skipped' && r.reason === 'ai-disabled', r.status);
-    ok('没有发出网络请求', requestCount === before);
+    ok('不再被 AI 开关拦截', r.status !== 'skipped' && r.reason !== 'ai-disabled', r.status);
+    ok('确实发出了网络请求', requestCount > before, requestCount - before);
+    ok('内容保持一致（版本相同）', r.status === 'unchanged', r.status);
     store.setAiEnabled(true);
 
     console.log('\n【缓存被写坏 → 清缓存回落内置内容，不崩】');
@@ -192,7 +189,7 @@ async function main() {
     store.setContentCache({ version: 100, updatedAt: Date.now(), payload: { teas: onlyTeas.payload.teas } });
     r = contentClient.bootstrap();
     ok('套用成功', r.applied === true, 'v' + r.version);
-    ok('茶方被覆盖', teas.total === 19, teas.total);
+    ok('茶方被覆盖', teas.total === 24, teas.total);
     ok('体质库未被清空', CONSTITUTIONS.list.length === 9, CONSTITUTIONS.list.length);
 
     console.log('\n【清除本地数据 → 会话与 AI 授权一并复位】');

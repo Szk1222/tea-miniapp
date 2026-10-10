@@ -1,3 +1,65 @@
+/* ---------------- 逐款饮用提示 ---------------- */
+.warn-item {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #F0F3F0;
+}
+
+.warn-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.warn-item__head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10rpx;
+}
+
+.warn-item__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #2A3A31;
+}
+
+/* 胶囊标签：用 <view> 承载并写死 height + line-height，
+   真机上行内 <text> 不认垂直内边距，会被压扁 */
+.warn-item__level {
+  flex: 0 0 auto;
+  height: 40rpx;
+  line-height: 40rpx;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 21rpx;
+  color: #B9873A;
+  background: #FBF4E6;
+  border-radius: 999rpx;
+  padding: 0 16rpx;
+  box-sizing: border-box;
+}
+
+/* 禁用 / 忌用：比「慎用」更重，用红调区分 */
+.warn-item__level--block {
+  color: #A32D2D;
+  background: #FCEBEB;
+}
+
+.warn-item__text {
+  font-size: 24rpx;
+  color: #6E7C73;
+  line-height: 1.7;
+}
+
+.warn-note {
+  margin-top: 20rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid #F0F3F0;
+  font-size: 22rpx;
+  color: #93A099;
+  line-height: 1.7;
+}
+
 /* ---------------- 结果主卡 ---------------- */
 .result-hero {
   margin: 28rpx 32rpx 0;

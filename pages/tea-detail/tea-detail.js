@@ -10,7 +10,14 @@ Page({
     favorite: false,
     related: [],
     seasonName: '',
-    seasonFit: false
+    seasonFit: false,
+    /* 安全提示 */
+    risk: null,
+    riskText: '',
+    drugNotes: [],
+    drugGeneral: '',
+    usageCap: '',
+    courseText: ''
   },
 
   onLoad(options) {
@@ -35,13 +42,38 @@ Page({
       .filter(function (t) { return t.id !== tea.id; })
       .slice(0, 2);
 
+    // 安全提示：只对「用户实际填了用药/慢病/阶段」的情况展示，
+    // 避免没有档案的用户被一堆与己无关的禁忌刷屏。
+    const profile = store.getProfile();
+    const basic = (profile && profile.basic) || null;
+    const risk = basic ? engine.riskOf(tea, basic) : null;
+    let riskText = '';
+    if (risk) {
+      const parts = risk.items.map(function (i) {
+        return '【' + i.level + '】' + i.keyword + '：' + i.reason;
+      });
+      riskText = parts.join('\n');
+    }
+    const course = tea.courseLimit || {};
+
     this.setData({
       tea: tea,
       c: c,
       favorite: store.isFavorite(tea.id),
       related: related,
       seasonName: engine.seasonName(season),
-      seasonFit: !!(tea.season && tea.season.indexOf(season) > -1)
+      seasonFit: !!(tea.season && tea.season.indexOf(season) > -1),
+      risk: risk,
+      riskText: riskText,
+      drugNotes: risk ? risk.drugNotes : [],
+      drugGeneral: teas.DRUG_NOTE_GENERAL,
+      usageCap: tea.usageCap || '',
+      contra: (tea.contraindications || []).map(function (x) {
+        return { level: x.level, text: x.keyword + '：' + x.reason };
+      }),
+      courseText: course.maxWeeks
+        ? ('连续 ' + course.maxWeeks + ' 周后停 ' + course.restWeeks + ' 周再评估')
+        : ''
     });
     store.addHistory(tea.id);
     wx.setNavigationBarTitle({ title: tea.name });
@@ -75,8 +107,17 @@ Page({
     lines.push('冲泡：' + t.brew.water + '，' + t.brew.time);
     t.brew.steps.forEach(function (s, i) { lines.push((i + 1) + '. ' + s); });
     lines.push('最佳时段：' + t.brew.best + '｜频次：' + t.brew.frequency);
+    if (this.data.courseText) lines.push('疗程：' + this.data.courseText);
+    if (t.usageCap) lines.push('用量口径：' + t.usageCap + '（' + (t.dosageBasis || '代茶饮用量') + '）');
     lines.push('');
     lines.push('注意：' + t.caution.join('；') + '。');
+    if (t.isPilot) lines.push('试点物质提示：含黄芪/党参，非全国通用食材，非试点地区及孕期、哺乳期、14 岁以下请咨询专业人员。');
+    if (this.data.risk) {
+      lines.push('');
+      lines.push('我的情况提示：');
+      if (this.data.riskText) lines.push(this.data.riskText);
+      this.data.drugNotes.forEach(function (n) { lines.push(n); });
+    }
     lines.push('');
     lines.push('本建议仅作日常养生参考，不替代专业医疗建议。');
 

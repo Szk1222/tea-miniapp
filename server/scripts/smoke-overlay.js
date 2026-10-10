@@ -16,11 +16,13 @@ function check(label, actual, expected) {
   console.log((ok ? '  ok   ' : '  FAIL ') + label + ' → ' + JSON.stringify(actual) + (ok ? '' : '（期望 ' + JSON.stringify(expected) + '）'));
 }
 
+// 快照断言：内容库条数是「有意变更」才允许变动的量。
+// 扩充知识库（新增茶方/食材）后必须同步这里的数字，否则自检会正确地失败。
 console.log('【内置数据】');
-check('teas.total', teas.total, 18);
+check('teas.total', teas.total, 23);
 check('constitutions.ids.length', constitutions.ids.length, 9);
 check('questions.total', questions.total, 10);
-check('knowledge.ingredients.length', knowledge.ingredients.length, 28);
+check('knowledge.ingredients.length', knowledge.ingredients.length, 35);
 check('catalog.total', catalog.total, catalog.items.length);
 check('engine.MAX_SCORE 有 9 项', Object.keys(engine.MAX_SCORE).length, 9);
 

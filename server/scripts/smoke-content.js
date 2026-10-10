@@ -26,7 +26,7 @@ console.log('存储目录：' + TMP);
 console.log('\n【首次启动播种】');
 const info = content.init();
 ok('版本从 1 起', content.meta().version === 1, content.meta().version);
-ok('茶方 18 条', teas.total === 18, teas.total);
+ok('茶方 23 条', teas.total === 23, teas.total);
 ok('落盘文件存在', fs.existsSync(content._file));
 ok('索引已建', rag._state.chunks.length > 0, rag._state.chunks.length + ' chunk');
 ok('标记为内置播种', content.meta().seeded === true);
@@ -81,7 +81,7 @@ ok('工具枚举随时可用', require('../src/tools.js').TOOLS.filter(function 
 console.log('\n【版本对齐：客户端增量判断】');
 ok('同版本不下发 payload', content.payloadFor(content.meta().version).unchanged === true);
 const p = content.payloadFor(0);
-ok('异版本下发完整内容', p.unchanged === false && p.payload.teas.length === 18, '茶方 ' + p.payload.teas.length + ' 条');
+ok('异版本下发完整内容', p.unchanged === false && p.payload.teas.length === 23, '茶方 ' + p.payload.teas.length + ' 条');
 
 console.log('\n【回滚】');
 const vBefore = content.meta().version;
