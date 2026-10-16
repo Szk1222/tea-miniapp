@@ -1,7 +1,7 @@
 <view class="page">
   <view wx:if="{{!authorized}}" class="notice">{{message || '验证管理身份中…'}}</view>
   <block wx:else>
-    <view class="heading">线上内容 <text>v{{version}}</text></view>
+    <view class="heading">线上内容 <text class="heading-version">v{{version}}</text></view>
     <scroll-view scroll-x class="types"><view class="types-inner">
       <view wx:for="{{types}}" wx:key="id" class="type {{type === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="chooseType">{{item.name}}</view>
     </view></scroll-view>
@@ -9,8 +9,8 @@
     <textarea class="editor" value="{{draft}}" maxlength="-1" bindinput="onDraft" show-confirm-bar="false" placeholder="加载中…" />
     <view wx:if="{{message}}" class="notice">{{message}}</view>
     <view class="actions">
-      <button bindtap="loadType" disabled="{{busy}}">重新加载</button>
-      <button type="primary" bindtap="publish" disabled="{{busy || !dirty}}">发布</button>
+      <button class="action-button" bindtap="loadType" disabled="{{busy}}">重新加载</button>
+      <button class="action-button" type="primary" bindtap="publish" disabled="{{busy || !dirty}}">发布</button>
     </view>
     <button class="rollback" bindtap="rollback" disabled="{{busy}}">回滚上一版</button>
   </block>
