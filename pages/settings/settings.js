@@ -66,9 +66,19 @@ Page({
       wx.showToast({ title: '请至少输入 4 个字', icon: 'none' });
       return;
     }
-    wx.setStorageSync('tl_feedback_' + Date.now(), text);
-    this.setData({ feedback: '' });
-    wx.showToast({ title: '已收到，感谢反馈', icon: 'none' });
+    wx.setClipboardData({
+      data: text,
+      success: function () {
+        wx.showModal({
+          title: '反馈内容已复制',
+          content: '请将内容发送至 ' + CONFIG.SUPPORT_EMAIL + '。点击「联系邮箱」可复制邮箱地址。',
+          showCancel: false
+        });
+      },
+      fail: function () {
+        wx.showToast({ title: '复制失败，请重试', icon: 'none' });
+      }
+    });
   },
 
   copyContact() {

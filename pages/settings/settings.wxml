@@ -65,7 +65,7 @@
           <icon name="messageSquare" size="{{28}}" color="#93A099" weight="{{1.7}}" />
           <text>联系邮箱</text>
         </view>
-        <view class="fb__submit {{feedback ? 'is-on' : ''}}" bindtap="submitFeedback">提交反馈</view>
+        <view class="fb__submit {{feedback ? 'is-on' : ''}}" bindtap="submitFeedback">复制反馈内容</view>
       </view>
     </view>
 
