@@ -107,6 +107,7 @@ module.exports = {
   /** 内容与审计日志的落盘位置（容器里要挂 volume，否则重启即失） */
   storage: {
     dir: env('STORAGE_DIR', path.join(__dirname, '..', 'storage')),
+    mountPath: env('STORAGE_MOUNT_PATH', ''),
     auditRetentionDays: parseInt(env('AUDIT_RETENTION_DAYS', '7'), 10)
   },
 
@@ -114,6 +115,7 @@ module.exports = {
     // 管理后台访问令牌。留空表示管理端整体关闭（接口一律 403），
     // 避免「忘了配」变成「谁都能改线上内容」。
     token: env('ADMIN_TOKEN', ''),
+    openids: env('ADMIN_OPENIDS', '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
     // 登录失败限流：同一 IP 连续失败达到阈值后锁定一段时间，防在线爆破
     maxLoginFails: parseInt(env('ADMIN_MAX_LOGIN_FAILS', '5'), 10),
     lockMs: parseInt(env('ADMIN_LOCK_MS', '300000'), 10)

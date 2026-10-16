@@ -12,7 +12,8 @@
     "pages/knowledge-detail/knowledge-detail",
     "pages/feedback/feedback",
     "pages/symptom/symptom",
-    "pages/settings/settings"
+    "pages/settings/settings",
+    "pages/admin/admin"
   ],
   "window": {
     "backgroundTextStyle": "dark",

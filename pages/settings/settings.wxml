@@ -84,6 +84,8 @@
       </view>
     </view>
 
+    <view wx:if="{{adminVisible}}" class="doc__btn" bindtap="openAdmin">内容管理</view>
+
     <view class="page-bottom-gap"></view>
   </view>
 </view>

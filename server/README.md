@@ -140,10 +140,12 @@ node server/scripts/smoke-security.js  # 安全边界：隐私剥离 / 审计鉴
 | `RATE_LIMIT_API_MAX` | `60` | 其余公开接口单 IP 每窗口上限 |
 | `RATE_LIMIT_MAX_IPS` | `20000` | 限流表最多跟踪多少个 IP，超出按插入顺序淘汰 |
 | `SESSION_MAX` | `5000` | 会话数上限，超出按最久未活跃淘汰 |
-| `ADMIN_TOKEN` | — | 管理后台访问令牌。**留空则管理端整体关闭（接口一律 403）** |
+| `ADMIN_TOKEN` | — | 本地浏览器后台的可选令牌；微信云托管建议留空 |
+| `ADMIN_OPENIDS` | — | 微信云托管管理员 OpenID 白名单，逗号分隔 |
 | `ADMIN_MAX_LOGIN_FAILS` | `5` | 同一 IP 连续登录失败几次后锁定 |
 | `ADMIN_LOCK_MS` | `300000` | 锁定时长（毫秒，默认 5 分钟） |
 | `STORAGE_DIR` | `server/storage` | 内容库与审计日志落盘目录。**容器部署必须挂 volume** |
+| `STORAGE_MOUNT_PATH` | — | 生产启用管理端时必填；服务验证挂载点存在且可写 |
 | `AUDIT_RETENTION_DAYS` | `7` | 审计日志保留天数，按天分文件、过期自动清理 |
 
 ---
@@ -168,7 +170,7 @@ node server/scripts/smoke-security.js  # 安全边界：隐私剥离 / 审计鉴
 > 就是用户输入原文 —— 等于把线上用户的健康类对话片段公开在互联网上。
 > 现在只保留带鉴权的 `/api/admin/raw-audit`（落盘版见 `/api/admin/audit`）。
 
-管理端接口（全部要求 `Authorization: Bearer <ADMIN_TOKEN>`，见「内容管理后台」）：
+管理端接口要求云托管私有链路 OpenID 白名单或本地 `Authorization: Bearer <ADMIN_TOKEN>`（见「内容管理后台」）：
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
@@ -327,11 +329,12 @@ dosage 也有两道线：单味 > 10g 告警，> 30g 阻断；食材必须在「
 ```bash
 # 1. 生成令牌（32 位以上随机串）
 node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
-# 2. 填进 server/.env 的 ADMIN_TOKEN，重启服务
+# 2. 本地调试时填进 server/.env 的 ADMIN_TOKEN，重启服务
 # 3. 打开 http://<host>:8787/admin，粘贴令牌登录
 ```
 
-页面左侧是五类内容 + 概览 + 变更记录 + 审计留痕；表单由 `/api/admin/schema` 下发，
+微信云托管线上使用小程序「设置 → 内容管理」入口，配置见 `docs/cloudbase-deploy.md`。
+本地网页左侧是五类内容 + 概览 + 变更记录 + 审计留痕；表单由 `/api/admin/schema` 下发，
 **加字段只需要改 `content-schema.js`**，服务端校验与管理端表单会同步跟上，不会两边不一致。
 
 误操作有两道保险：`回滚到上一版`（恢复 `content.prev.json`，版本号继续递增所以客户端能感知）
@@ -341,7 +344,7 @@ node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
 
 - **单令牌模型**：`ADMIN_TOKEN` + `Authorization: Bearer`，`timingSafeEqual` 比较防时序侧信道；
   同一 IP 连续失败 `ADMIN_MAX_LOGIN_FAILS` 次锁定 `ADMIN_LOCK_MS`
-- `ADMIN_TOKEN` 留空 → 管理接口一律 403。这是故意的：宁可「忘了配导致管理端不可用」，
+- `ADMIN_TOKEN` 与 `ADMIN_OPENIDS` 都留空 → 管理接口一律 403。这是故意的：宁可「忘了配导致管理端不可用」，
   也不要「忘了配导致谁都能改线上内容」
 - 令牌放 `server/.env`（已在 `.gitignore` / `.dockerignore`），**不要提交、不要在群里发**
 - 管理页面带 `noindex`，且所有数据接口都要令牌 —— 页面外壳本身不鉴权，拿到 HTML 也读不到内容

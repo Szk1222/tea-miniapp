@@ -2,7 +2,8 @@
  * 管理端接口（内容管理后台）。
  *
  * 鉴权模型（有意保持最小，够用且可审计）：
- *   - 单令牌：ADMIN_TOKEN 放在 server/.env，接口要求 Authorization: Bearer <token>
+ *   - 微信云托管：私有链路注入 OpenID，匹配 ADMIN_OPENIDS 白名单
+ *   - 本地浏览器：可选 ADMIN_TOKEN，接口要求 Authorization: Bearer <token>
  *   - 令牌用 timingSafeEqual 比较，避免时序侧信道
  *   - 登录失败按 IP 限流并锁定，防在线爆破
  *   - ADMIN_TOKEN 为空 → 所有管理接口 403，防止「忘了配」变成裸奔
@@ -85,7 +86,23 @@ function tokenFrom(req) {
 }
 
 function adminReady() {
-  return !!cfg.admin.token;
+  return !!cfg.admin.token || cfg.admin.openids.length > 0;
+}
+
+function cloudIdentity(req) {
+  if (cfg.session.identityMode !== 'cloudbase') return '';
+  const openid = String(req.headers['x-wx-openid'] || '').trim();
+  return /^[A-Za-z0-9_-]{8,128}$/.test(openid) ? openid : '';
+}
+
+function isCloudAdmin(req) {
+  const id = cloudIdentity(req);
+  return !!id && cfg.admin.openids.indexOf(id) !== -1;
+}
+
+function adminActor(req, fallback) {
+  if (!isCloudAdmin(req)) return fallback || clientIp(req);
+  return 'wx:' + crypto.createHash('sha256').update(cloudIdentity(req)).digest('hex').slice(0, 12);
 }
 
 /** @returns {null|{status:number, body:object}} null 表示鉴权通过 */
@@ -96,11 +113,11 @@ function authGuard(req) {
       body: {
         ok: false,
         error: '管理端未启用',
-        hint: '请在 server/.env 里设置 ADMIN_TOKEN（建议 32 位以上随机字符串）后重启服务'
+        hint: '请在云托管私有服务中配置 ADMIN_OPENIDS 和持久化存储'
       }
     };
   }
-  if (!safeEqual(tokenFrom(req), cfg.admin.token)) {
+  if (!isCloudAdmin(req) && !(cfg.admin.token && safeEqual(tokenFrom(req), cfg.admin.token))) {
     return { status: 401, body: { ok: false, error: '令牌无效或已过期，请重新登录' } };
   }
   return null;
@@ -146,12 +163,22 @@ function route(req, res, url) {
 
   /* 管理页面本身不鉴权：它只是个静态外壳，真正的数据都要带令牌才能拿 */
   if (pathname === '/admin' || pathname === '/admin/') {
+    if (!cfg.admin.token) return http.sendText(res, 404, '管理网页未启用'), true;
     const html = readAdminHtml();
     if (html === null) return http.sendText(res, 500, 'admin.html 缺失，请确认 server/public/admin.html 已随镜像发布'), true;
     return http.sendHTML(res, 200, html), true;
   }
 
   if (pathname.indexOf('/api/admin/') !== 0) return false;
+
+  if (pathname === '/api/admin/status' && req.method === 'GET') {
+    const identity = cloudIdentity(req);
+    return http.sendJSON(res, identity ? 200 : 401, {
+      ok: !!identity,
+      authorized: isCloudAdmin(req),
+      openid: identity || undefined
+    }), true;
+  }
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204, http.corsHeaders());
@@ -168,7 +195,7 @@ function route(req, res, url) {
         error: '尝试次数过多，请 ' + Math.ceil(left / 1000) + ' 秒后重试'
       }), true;
     }
-    if (!adminReady()) return http.sendJSON(res, 403, authGuard(req).body), true;
+    if (!cfg.admin.token) return http.sendJSON(res, 403, { ok: false, error: '浏览器令牌登录未启用' }), true;
 
     return http.readBody(req, 8 * 1024).then(function (body) {
       if (safeEqual(body.token, cfg.admin.token)) {
@@ -231,7 +258,7 @@ function route(req, res, url) {
 
   if (pathname === '/api/admin/rollback' && req.method === 'POST') {
     return http.readBody(req, 8 * 1024).then(function (body) {
-      const r = content.rollback(body.actor || 'admin');
+      const r = content.rollback(adminActor(req, body.actor || 'admin'));
       safety.audit('admin:rollback', {}, r);
       return http.sendJSON(res, r.ok ? 200 : 409, r.ok ? Object.assign({ ok: true }, r) : r);
     }).catch(function (e) { return http.sendJSON(res, 400, { ok: false, error: e.message }); }), true;
@@ -242,7 +269,7 @@ function route(req, res, url) {
       if (body.confirm !== 'RESEED') {
         return http.sendJSON(res, 400, { ok: false, error: '需要 body.confirm = "RESEED" 才会执行，避免误触' });
       }
-      const r = content.reseed(body.actor || 'admin');
+      const r = content.reseed(adminActor(req, body.actor || 'admin'));
       safety.audit('admin:reseed', {}, r);
       return http.sendJSON(res, r.ok ? 200 : 500, r.ok ? Object.assign({ ok: true }, r) : r);
     }).catch(function (e) { return http.sendJSON(res, 400, { ok: false, error: e.message }); }), true;
@@ -268,12 +295,13 @@ function route(req, res, url) {
     if (req.method === 'PUT') {
       return http.readBody(req, 4 * 1024 * 1024).then(function (body) {
         const value = body.value !== undefined ? body.value : body;
-        const r = content.save(type, value, body.actor || clientIp(req));
-        safety.audit('admin:save:' + type, { actor: body.actor || clientIp(req) }, {
+        const actor = adminActor(req, body.actor || clientIp(req));
+        const r = content.save(type, value, actor, body.baseVersion);
+        safety.audit('admin:save:' + type, { actor: actor }, {
           ok: r.ok, version: r.version, count: r.count,
           errors: (r.errors || []).map(function (e) { return e.path + ' ' + e.message; }).slice(0, 10)
         });
-        return http.sendJSON(res, r.ok ? 200 : 422, r.ok ? Object.assign({ ok: true, type: type }, r) : r);
+        return http.sendJSON(res, r.ok ? 200 : (r.conflict ? 409 : 422), r.ok ? Object.assign({ ok: true, type: type }, r) : r);
       }).catch(function (e) {
         return http.sendJSON(res, 400, { ok: false, error: e.message });
       }), true;

@@ -127,7 +127,7 @@ th{color:var(--t2);font-weight:500}
 var API = '/api/admin';
 var TOKEN = localStorage.getItem('chalifang_admin_token') || '';
 var SCHEMA = null, TYPES = [], OV = null;
-var cur = { type: '', items: null, index: -1, dirty: false, errors: [], warns: [], search: '' };
+var cur = { type: '', items: null, index: -1, dirty: false, errors: [], warns: [], search: '', version: 0 };
 
 function esc(s) {
   return String(s === undefined || s === null ? '' : s)
@@ -544,6 +544,7 @@ function loadType(type) {
       return;
     }
     cur.items = r.data.value;
+    cur.version = r.data.version;
     cur.index = (Array.isArray(cur.items) && cur.items.length) ? 0 : -1;
     badge('内容版本 v' + r.data.version);
     renderList();
@@ -555,7 +556,7 @@ function doSave() {
   var btn = document.getElementById('saveBtn');
   if (btn) { btn.disabled = true; btn.textContent = '发布中…'; }
   cur.errors = []; cur.warns = [];
-  api('/content/' + cur.type, { method: 'PUT', body: { value: cur.items, actor: 'admin' } })
+  api('/content/' + cur.type, { method: 'PUT', body: { value: cur.items, actor: 'admin', baseVersion: cur.version } })
     .then(function (r) {
       if (r.status === 401) return logout('登录已失效，请重新登录');
       if (!r.data.ok) {
@@ -565,6 +566,7 @@ function doSave() {
         return;
       }
       cur.warns = r.data.warnings || [];
+      cur.version = r.data.version;
       setDirty(false);
       badge('内容版本 v' + r.data.version);
       renderEditor();

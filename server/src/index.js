@@ -437,6 +437,9 @@ function route(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const path = url.pathname;
 
+  // 持久化内容可由另一个实例发布；每个请求先检查版本，避免继续使用旧索引。
+  if (content.meta().version) content.sync();
+
   if (req.method === 'OPTIONS') {
     res.writeHead(204, httpUtil.corsHeaders());
     return res.end();
@@ -589,7 +592,7 @@ const server = http.createServer(function (req, res) {
       maybe.catch(function (e) { sendJSON(res, 500, { ok: false, error: e.message }); });
     }
   } catch (e) {
-    sendJSON(res, 500, { ok: false, error: e.message });
+    sendJSON(res, 503, { ok: false, error: e.message });
   }
 });
 
@@ -615,8 +618,8 @@ if (require.main === module) {
   server.listen(cfg.port, cfg.host, function () {
     console.log('茶历方 Agent 服务 → http://' + cfg.host + ':' + cfg.port);
     console.log('模型：' + cfg.llm.model + (cfg.llm.apiKey ? '' : '（未配置 LLM_API_KEY，将走本地规则兜底）'));
-    console.log('管理后台：http://' + cfg.host + ':' + cfg.port + '/admin'
-      + (cfg.admin.token ? '' : '（未配置 ADMIN_TOKEN，管理端已关闭）'));
+    console.log('管理入口：' + (cfg.admin.openids.length ? '小程序私有链路（OpenID 白名单）'
+      : (cfg.admin.token ? '本地浏览器 /admin' : '未启用')));
   });
 }
 

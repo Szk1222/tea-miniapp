@@ -21,10 +21,12 @@ const overlay = require('../../utils/content-overlay.js');
 const schema = require('./content-schema.js');
 const rag = require('./rag.js');
 const auditStore = require('./audit-store.js');
+const storageGuard = require('./storage-guard.js');
 
 const DIR = cfg.storage.dir;
 const FILE = path.join(DIR, 'content.json');
 const PREV = path.join(DIR, 'content.prev.json');
+const LOCK = path.join(DIR, '.content-write-lock');
 const DOC_SCHEMA = 1;
 const JOURNAL_MAX = 200;
 
@@ -44,17 +46,18 @@ function ensureDir() {
 function readDoc(file) {
   try {
     const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if (!raw || !raw.payload) return null;
+    if (!raw || !raw.payload || !Number.isSafeInteger(raw.version)) throw new Error('内容文件结构不完整');
     return raw;
   } catch (e) {
-    return null;
+    if (e.code === 'ENOENT') return null;
+    throw new Error('读取内容文件失败 ' + file + '：' + e.message);
   }
 }
 
 /** 原子写：先写 .tmp 再 rename，避免断电/崩溃留下半截文件 */
 function writeAtomic(file, obj) {
   ensureDir();
-  const tmp = file + '.tmp';
+  const tmp = file + '.' + process.pid + '.' + Date.now() + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(obj, null, 2), 'utf8');
   fs.renameSync(tmp, file);
 }
@@ -98,6 +101,7 @@ function pushJournal(entry) {
  * @returns {{version:number, updatedAt:number, counts:object}}
  */
 function init() {
+  storageGuard.verify();
   ensureDir();
   doc = readDoc(FILE);
   if (!doc) {
@@ -118,6 +122,47 @@ function init() {
     + ' / 题目 ' + info.counts.questions + ' / 索引 ' + idx.chunks + ' chunk）'
     + (doc.updatedBy && doc.updatedBy !== 'seed' ? '，最后修改：' + doc.updatedBy : ''));
   return info;
+}
+
+/** 共享挂载上的内容有新版本时，刷新本实例的覆盖层和检索索引。 */
+function sync() {
+  if (!doc) return init();
+  const latest = readDoc(FILE);
+  if (!latest) throw new Error('持久化内容文件丢失');
+  if (latest.version === doc.version) return false;
+  doc = latest;
+  overlay.apply(doc.payload, { version: doc.version, updatedAt: doc.updatedAt });
+  rag.buildIndex();
+  if (cfg.embedding.enabled) rag.buildEmbeddings(false).catch(function () {});
+  return true;
+}
+
+function withWriteLock(fn) {
+  try {
+    fs.mkdirSync(LOCK);
+  } catch (e) {
+    if (e.code === 'EEXIST') {
+      // 崩溃遗留的锁最多阻塞十分钟；正常发布应在数秒内完成。
+      try {
+        if (Date.now() - fs.statSync(LOCK).mtimeMs > 10 * 60 * 1000) {
+          const stale = LOCK + '.stale-' + process.pid + '-' + Date.now();
+          fs.renameSync(LOCK, stale);
+          fs.rmdirSync(stale);
+          fs.mkdirSync(LOCK);
+        } else return { ok: false, conflict: true, error: '另一项内容发布正在进行，请稍后重试' };
+      } catch (lockError) {
+        return { ok: false, conflict: true, error: '内容发布锁尚未释放，请稍后重试' };
+      }
+    } else {
+      throw e;
+    }
+  }
+  try {
+    sync();
+    return fn();
+  } finally {
+    fs.rmdirSync(LOCK);
+  }
 }
 
 function meta() {
@@ -149,8 +194,15 @@ function getType(type) {
  * @param {string} actor 操作人标识，用于留痕
  * @returns {{ok:boolean, errors?:Array, warnings?:Array, version?:number, count?:number, index?:object}}
  */
-function save(type, value, actor) {
+function save(type, value, actor, baseVersion) {
+  return withWriteLock(function () { return saveLocked(type, value, actor, baseVersion); });
+}
+
+function saveLocked(type, value, actor, baseVersion) {
   if (!doc) init();
+  if (!Number.isSafeInteger(baseVersion) || baseVersion !== doc.version) {
+    return { ok: false, conflict: true, version: doc.version, error: '内容版本已变化，请重新加载后再发布' };
+  }
   if (overlay.TYPES.indexOf(type) < 0) {
     return { ok: false, errors: [{ path: '', message: '未知内容类型：' + type }] };
   }
@@ -242,6 +294,10 @@ function dedupeWarnings(list) {
 
 /** 回滚到上一版（版本号继续递增，客户端才会感知到变化） */
 function rollback(actor) {
+  return withWriteLock(function () { return rollbackLocked(actor); });
+}
+
+function rollbackLocked(actor) {
   if (!doc) init();
   const prev = readDoc(PREV);
   if (!prev) return { ok: false, error: '没有可回滚的上一版' };
@@ -273,6 +329,10 @@ function rollback(actor) {
 
 /** 丢弃本地改动、重新用内置数据播种（慎用，会覆盖后台所有编辑） */
 function reseed(actor) {
+  return withWriteLock(function () { return reseedLocked(actor); });
+}
+
+function reseedLocked(actor) {
   if (!doc) init();
   const current = doc;
   const seeded = seedDoc();
@@ -313,6 +373,7 @@ function payloadFor(clientVersion) {
 
 module.exports = {
   init: init,
+  sync: sync,
   meta: meta,
   getAll: getAll,
   getType: getType,

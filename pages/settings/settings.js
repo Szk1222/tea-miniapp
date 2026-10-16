@@ -1,10 +1,12 @@
 const store = require('../../utils/store.js');
 const CONFIG = require('../../utils/config.js');
 const remote = require('../../utils/agent-remote.js');
+const transport = require('../../utils/transport.js');
 
 Page({
   data: {
     version: '1.0.0',
+    adminVisible: false,
     feedback: '',
     tab: 'disclaimer',
     disclaimer: [
@@ -37,6 +39,17 @@ Page({
     if (consult && consult.allergy) {
       // 保留用户已填写的过敏史，便于在反馈中带出
     }
+  },
+
+  onShow() {
+    if (!CONFIG.useCloud()) return;
+    transport.request({ path: '/api/admin/status', timeout: 5000 }).promise.then((res) => {
+      this.setData({ adminVisible: !!(res.data && res.data.authorized) });
+    }).catch(() => { this.setData({ adminVisible: false }); });
+  },
+
+  openAdmin() {
+    wx.navigateTo({ url: '/pages/admin/admin' });
   },
 
   switchTab(e) {

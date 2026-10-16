@@ -135,7 +135,7 @@ async function main() {
     const pub = await (await fetch(BASE + '/api/admin/content/teas', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN },
-      body: JSON.stringify({ value: list, actor: 'client-smoke' })
+      body: JSON.stringify({ value: list, actor: 'client-smoke', baseVersion: got.version })
     })).json();
     ok('发布成功', pub.ok, 'v' + pub.version);
     ok('本进程仍是内置内容（端服确实分离）', teas.total === 23, teas.total);

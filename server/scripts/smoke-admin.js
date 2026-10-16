@@ -84,7 +84,7 @@ async function main() {
   ok('读取茶方库', r.json.ok && r.json.value.length === 23, r.json.value.length + ' 条');
   const edit = r.json.value;
   edit[0].subtitle = '疏肝和胃 · 后台改写验证';
-  r = await call('/api/admin/content/teas', { method: 'PUT', token: T, body: { value: edit, actor: 'smoke' } });
+  r = await call('/api/admin/content/teas', { method: 'PUT', token: T, body: { value: edit, actor: 'smoke', baseVersion: 1 } });
   ok('发布成功', r.status === 200 && r.json.ok, 'v' + r.json.version);
   ok('版本递增', r.json.version === 2);
   ok('运行时已生效', teas.get(edit[0].id).subtitle === '疏肝和胃 · 后台改写验证', teas.get(edit[0].id).subtitle);
@@ -98,7 +98,7 @@ async function main() {
   console.log('\n【违规内容被拦下】');
   const bad = JSON.parse(JSON.stringify(edit));
   bad[0].effects = ['本茶可以治疗失眠'];
-  r = await call('/api/admin/content/teas', { method: 'PUT', token: T, body: { value: bad, actor: 'smoke' } });
+  r = await call('/api/admin/content/teas', { method: 'PUT', token: T, body: { value: bad, actor: 'smoke', baseVersion: 2 } });
   ok('返回 422', r.status === 422, (r.json.errors[0] || {}).message);
   r = await call('/api/admin/overview', { token: T });
   ok('版本未被改动', r.json.content.version === 2, 'v' + r.json.content.version);
@@ -107,7 +107,7 @@ async function main() {
   console.log('\n【交叉引用保护】');
   r = await call('/api/admin/content/constitutions', { token: T });
   const cons = r.json.value.filter(function (c) { return c.id !== 'pinghe'; });
-  r = await call('/api/admin/content/constitutions', { method: 'PUT', token: T, body: { value: cons, actor: 'smoke' } });
+  r = await call('/api/admin/content/constitutions', { method: 'PUT', token: T, body: { value: cons, actor: 'smoke', baseVersion: 2 } });
   ok('拒绝（会让茶方失效）', r.status === 422, (r.json.errors[0] || {}).message);
   ok('体质库未被改动', CONSTITUTIONS.get('pinghe') !== null);
 
