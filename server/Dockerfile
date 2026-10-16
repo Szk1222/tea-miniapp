@@ -9,8 +9,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# 零运行时依赖，只需拷贝代码，不需要 npm install
 COPY server/package.json ./server/package.json
+COPY server/package-lock.json ./server/package-lock.json
+RUN npm ci --omit=dev --prefix /app/server
 COPY server/src ./server/src
 COPY server/scripts ./server/scripts
 # 管理后台页面（/admin）

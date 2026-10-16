@@ -142,7 +142,9 @@ jobs:
 
       - name: 服务端回归测试
         working-directory: server
-        run: npm test
+        run: |
+          npm ci
+          npm test
 
   # ============================================================
   # 2. 服务端镜像 → GHCR

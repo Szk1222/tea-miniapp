@@ -314,7 +314,7 @@ function checkPrimitive(field, value, path, ctx) {
     if (field.max && t.length > field.max) addError(ctx, path, field.label + ' 超过 ' + field.max + ' 字（当前 ' + t.length + '）');
     if (field.slug && !/^[a-z0-9][a-z0-9-]*$/.test(t)) addError(ctx, path, field.label + ' 只能用英文小写字母、数字与短横线');
     if (field.color && !/^#[0-9a-fA-F]{6}$/.test(t)) addError(ctx, path, field.label + ' 需为 #RRGGBB 格式');
-    if (field.catalog && !CATALOG.has(t)) addError(ctx, path, '「' + t + '」不在药食同源目录内，请先在「药食同源目录」中收录');
+    if (field.catalog && !(ctx.catalogNames ? ctx.catalogNames.has(t) : CATALOG.has(t))) addError(ctx, path, '「' + t + '」不在药食同源目录内，请先在「药食同源目录」中收录');
     if (field.dose) checkDose(t, path, ctx);
     return;
   }
@@ -476,7 +476,8 @@ function validate(type, value, opts) {
   const ctx = {
     errors: [],
     warnings: [],
-    ids: (opts && opts.ids) || CONSTITUTIONS.ids.slice()
+    ids: (opts && opts.ids) || CONSTITUTIONS.ids.slice(),
+    catalogNames: opts && opts.catalogNames
   };
 
   walk(entry.root, value, '', ctx);

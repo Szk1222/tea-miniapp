@@ -1,5 +1,5 @@
 /**
- * 茶历方 Agent 服务入口（零依赖，只用 Node 内置 http）。
+ * 茶历方 Agent 服务入口（HTTP 使用 Node 内置模块；MySQL 存储使用 mysql2）。
  *
  * 接口一览
  *   公开
@@ -437,9 +437,6 @@ function route(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const path = url.pathname;
 
-  // 持久化内容可由另一个实例发布；每个请求先检查版本，避免继续使用旧索引。
-  if (content.meta().version) content.sync();
-
   if (req.method === 'OPTIONS') {
     res.writeHead(204, httpUtil.corsHeaders());
     return res.end();
@@ -585,18 +582,26 @@ function ctxTopK() { return cfg.retriever.topK; }
 
 /* ---------------- 启动 ---------------- */
 
-const server = http.createServer(function (req, res) {
+const server = http.createServer(async function (req, res) {
   try {
+    // MySQL 多实例发布后，本实例按短 TTL 检查版本；数据库不可用时不继续返回旧内容。
+    await content.sync();
     const maybe = route(req, res);
     if (maybe && typeof maybe.catch === 'function') {
-      maybe.catch(function (e) { sendJSON(res, 500, { ok: false, error: e.message }); });
+      maybe.catch(function (e) {
+        console.error('[request] ' + e.message);
+        if (!res.headersSent) sendJSON(res, 500, { ok: false, error: '服务暂不可用，请稍后重试' });
+        else res.end();
+      });
     }
   } catch (e) {
-    sendJSON(res, 503, { ok: false, error: e.message });
+    console.error('[request] ' + e.message);
+    if (!res.headersSent) sendJSON(res, 503, { ok: false, error: '内容服务暂不可用，请稍后重试' });
+    else res.end();
   }
 });
 
-if (require.main === module) {
+async function start() {
   if (process.env.NODE_ENV === 'production' && cfg.session.identityMode !== 'cloudbase') {
     throw new Error('生产环境必须设置 SESSION_IDENTITY_MODE=cloudbase，并关闭服务公网访问');
   }
@@ -605,7 +610,7 @@ if (require.main === module) {
   }
   // 先加载内容：会把管理后台发布过的内容覆盖到 data/*.js，并重建检索索引。
   // 顺序不能反 —— 索引必须建立在「最终生效的内容」之上。
-  content.init();
+  await content.init();
   if (cfg.embedding.enabled) {
     console.log('向量检索已启用，索引构建在后台进行');
   }
@@ -620,6 +625,13 @@ if (require.main === module) {
     console.log('模型：' + cfg.llm.model + (cfg.llm.apiKey ? '' : '（未配置 LLM_API_KEY，将走本地规则兜底）'));
     console.log('管理入口：' + (cfg.admin.openids.length ? '小程序私有链路（OpenID 白名单）'
       : (cfg.admin.token ? '本地浏览器 /admin' : '未启用')));
+  });
+}
+
+if (require.main === module) {
+  start().catch(function (e) {
+    console.error('[startup] ' + e.message);
+    process.exitCode = 1;
   });
 }
 

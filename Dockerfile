@@ -5,6 +5,8 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY server/package.json ./server/package.json
+COPY server/package-lock.json ./server/package-lock.json
+RUN npm ci --omit=dev --prefix /app/server
 COPY server/src ./server/src
 COPY server/scripts ./server/scripts
 COPY server/public ./server/public

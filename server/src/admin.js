@@ -133,7 +133,7 @@ function overview() {
     index: { chunks: rag._state.chunks.length, vocab: Object.keys(rag._state.idf).length },
     session: session.stats(),
     audit: auditStore.stats(),
-    storage: { dir: cfg.storage.dir, file: content._file },
+    storage: { backend: cfg.storage.backend, dir: cfg.storage.backend === 'file' ? cfg.storage.dir : undefined },
     model: { provider: cfg.llm.baseUrl, model: cfg.llm.model, configured: !!cfg.llm.apiKey },
     guard: {
       loginLockThreshold: cfg.admin.maxLoginFails,
@@ -150,6 +150,14 @@ function readAdminHtml() {
   } catch (e) {
     return null;
   }
+}
+
+function sendAdminError(res, error) {
+  if (error.status === 400 || error.status === 413) {
+    return http.sendJSON(res, error.status, { ok: false, error: error.message });
+  }
+  console.error('[admin] 请求失败：' + error.message);
+  return http.sendJSON(res, 503, { ok: false, error: '内容存储暂不可用，请稍后重试' });
 }
 
 /**
@@ -234,10 +242,9 @@ function route(req, res, url) {
   }
 
   if (pathname === '/api/admin/journal' && req.method === 'GET') {
-    return http.sendJSON(res, 200, {
-      ok: true,
-      items: content.recentJournal(Math.min(200, Number(url.searchParams.get('n') || 30)))
-    }), true;
+    return Promise.resolve(content.recentJournal(Math.min(200, Number(url.searchParams.get('n') || 30))))
+      .then(function (items) { http.sendJSON(res, 200, { ok: true, items: items }); })
+      .catch(function (e) { sendAdminError(res, e); }), true;
   }
 
   if (pathname === '/api/admin/audit' && req.method === 'GET') {
@@ -257,22 +264,22 @@ function route(req, res, url) {
   }
 
   if (pathname === '/api/admin/rollback' && req.method === 'POST') {
-    return http.readBody(req, 8 * 1024).then(function (body) {
-      const r = content.rollback(adminActor(req, body.actor || 'admin'));
+    return http.readBody(req, 8 * 1024).then(async function (body) {
+      const r = await content.rollback(adminActor(req, body.actor || 'admin'));
       safety.audit('admin:rollback', {}, r);
       return http.sendJSON(res, r.ok ? 200 : 409, r.ok ? Object.assign({ ok: true }, r) : r);
-    }).catch(function (e) { return http.sendJSON(res, 400, { ok: false, error: e.message }); }), true;
+    }).catch(function (e) { return sendAdminError(res, e); }), true;
   }
 
   if (pathname === '/api/admin/reseed' && req.method === 'POST') {
-    return http.readBody(req, 8 * 1024).then(function (body) {
+    return http.readBody(req, 8 * 1024).then(async function (body) {
       if (body.confirm !== 'RESEED') {
         return http.sendJSON(res, 400, { ok: false, error: '需要 body.confirm = "RESEED" 才会执行，避免误触' });
       }
-      const r = content.reseed(adminActor(req, body.actor || 'admin'));
+      const r = await content.reseed(adminActor(req, body.actor || 'admin'));
       safety.audit('admin:reseed', {}, r);
       return http.sendJSON(res, r.ok ? 200 : 500, r.ok ? Object.assign({ ok: true }, r) : r);
-    }).catch(function (e) { return http.sendJSON(res, 400, { ok: false, error: e.message }); }), true;
+    }).catch(function (e) { return sendAdminError(res, e); }), true;
   }
 
   const m = /^\/api\/admin\/content\/([a-z]+)$/.exec(pathname);
@@ -293,18 +300,16 @@ function route(req, res, url) {
     }
 
     if (req.method === 'PUT') {
-      return http.readBody(req, 4 * 1024 * 1024).then(function (body) {
+      return http.readBody(req, 4 * 1024 * 1024).then(async function (body) {
         const value = body.value !== undefined ? body.value : body;
         const actor = adminActor(req, body.actor || clientIp(req));
-        const r = content.save(type, value, actor, body.baseVersion);
+        const r = await content.save(type, value, actor, body.baseVersion);
         safety.audit('admin:save:' + type, { actor: actor }, {
           ok: r.ok, version: r.version, count: r.count,
           errors: (r.errors || []).map(function (e) { return e.path + ' ' + e.message; }).slice(0, 10)
         });
         return http.sendJSON(res, r.ok ? 200 : (r.conflict ? 409 : 422), r.ok ? Object.assign({ ok: true, type: type }, r) : r);
-      }).catch(function (e) {
-        return http.sendJSON(res, 400, { ok: false, error: e.message });
-      }), true;
+      }).catch(function (e) { return sendAdminError(res, e); }), true;
     }
   }
 

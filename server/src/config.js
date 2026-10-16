@@ -104,10 +104,17 @@ module.exports = {
     maxTrackedIps: parseInt(env('RATE_LIMIT_MAX_IPS', '20000'), 10)
   },
 
-  /** 内容与审计日志的落盘位置（容器里要挂 volume，否则重启即失） */
+  /** 内容库选择 MySQL 或本地文件；审计文件仍写临时目录。 */
   storage: {
     dir: env('STORAGE_DIR', path.join(__dirname, '..', 'storage')),
-    mountPath: env('STORAGE_MOUNT_PATH', ''),
+    backend: env('CONTENT_STORAGE', 'file'),
+    mysql: {
+      host: env('MYSQL_HOST', ''),
+      port: parseInt(env('MYSQL_PORT', '3306'), 10),
+      user: env('MYSQL_USER', ''),
+      password: env('MYSQL_PASSWORD', ''),
+      database: env('MYSQL_DATABASE', '')
+    },
     auditRetentionDays: parseInt(env('AUDIT_RETENTION_DAYS', '7'), 10)
   },
 

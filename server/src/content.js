@@ -2,7 +2,7 @@
  * 内容中心（服务端唯一入口）。
  *
  * 职责边界：
- *   - 持久化：server/storage/content.json（原子写 + 上一版备份，支持回滚）
+ *   - 持久化：生产用 MySQL 事务；本地开发可用 server/storage/content.json
  *   - 校验：结构 + 合规 + 跨类型交叉引用（三个都过才允许发布）
  *   - 发布：写入运行时覆盖层 → 重建 RAG 索引 → 递增内容版本号
  *
@@ -21,7 +21,7 @@ const overlay = require('../../utils/content-overlay.js');
 const schema = require('./content-schema.js');
 const rag = require('./rag.js');
 const auditStore = require('./audit-store.js');
-const storageGuard = require('./storage-guard.js');
+const mysqlStore = cfg.storage.backend === 'mysql' ? require('./content-db.js') : null;
 
 const DIR = cfg.storage.dir;
 const FILE = path.join(DIR, 'content.json');
@@ -29,11 +29,13 @@ const PREV = path.join(DIR, 'content.prev.json');
 const LOCK = path.join(DIR, '.content-write-lock');
 const DOC_SCHEMA = 1;
 const JOURNAL_MAX = 200;
+const BUILTIN_PAYLOAD = overlay.snapshot();
 
 /** 当前生效的内容文档 { schemaVersion, version, updatedAt, updatedBy, payload } */
 let doc = null;
 /** 最近的内容变更记录（同时落审计日志，这里只是给管理端一个快速视图） */
 let journal = [];
+let lastDbCheck = 0;
 
 function clone(v) {
   return JSON.parse(JSON.stringify(v));
@@ -68,17 +70,23 @@ function seedDoc() {
     version: 1,
     updatedAt: Date.now(),
     updatedBy: 'seed',
-    payload: overlay.snapshot()
+    payload: clone(BUILTIN_PAYLOAD)
   };
 }
 
-/** 全类型校验；运行时已应用新内容，因此 ref / 白名单校验读到的是最新值 */
+/** 全类型校验使用候选内容的体质与食材目录，不先修改线上运行时。 */
 function checkAll(payload) {
   const errors = [];
   const warnings = [];
+  const ids = (payload.constitutions || []).map(function (c) { return c.id; });
+  const catalogNames = new Set();
+  (payload.catalog || []).forEach(function (item) {
+    if (item.name) catalogNames.add(item.name);
+    if (item.alias) catalogNames.add(item.alias);
+  });
   overlay.TYPES.forEach(function (type) {
     if (!payload[type]) return;
-    const r = schema.validate(type, payload[type]);
+    const r = schema.validate(type, payload[type], { ids: ids, catalogNames: catalogNames });
     r.errors.forEach(function (e) { errors.push({ type: type, path: type + e.path, message: e.message }); });
     r.warnings.forEach(function (w) { warnings.push({ type: type, path: type + w.path, message: w.message }); });
   });
@@ -101,7 +109,10 @@ function pushJournal(entry) {
  * @returns {{version:number, updatedAt:number, counts:object}}
  */
 function init() {
-  storageGuard.verify();
+  if (mysqlStore) return initMysql();
+  if (process.env.NODE_ENV === 'production' && (cfg.admin.openids.length || cfg.admin.token)) {
+    throw new Error('生产环境开启在线管理必须设置 CONTENT_STORAGE=mysql');
+  }
   ensureDir();
   doc = readDoc(FILE);
   if (!doc) {
@@ -124,8 +135,35 @@ function init() {
   return info;
 }
 
-/** 共享挂载上的内容有新版本时，刷新本实例的覆盖层和检索索引。 */
-function sync() {
+function applyCurrent(nextDoc) {
+  doc = nextDoc;
+  const info = overlay.apply(doc.payload, { version: doc.version, updatedAt: doc.updatedAt });
+  const idx = rag.buildIndex();
+  if (cfg.embedding.enabled) rag.buildEmbeddings(false).catch(function () {});
+  return { info: info, index: idx };
+}
+
+async function initMysql() {
+  const latest = await mysqlStore.init(seedDoc());
+  const applied = applyCurrent(latest);
+  lastDbCheck = Date.now();
+  console.log('[content] MySQL 内容已加载 v' + doc.version + '（索引 ' + applied.index.chunks + ' chunk）');
+  return applied.info;
+}
+
+async function syncMysql(force) {
+  if (!doc) return initMysql();
+  if (!force && Date.now() - lastDbCheck < 5000) return false;
+  const latest = await mysqlStore.load();
+  lastDbCheck = Date.now();
+  if (latest.version === doc.version) return false;
+  applyCurrent(latest);
+  return true;
+}
+
+/** 持久化内容有新版本时，刷新本实例的覆盖层和检索索引。 */
+function sync(force) {
+  if (mysqlStore) return syncMysql(force);
   if (!doc) return init();
   const latest = readDoc(FILE);
   if (!latest) throw new Error('持久化内容文件丢失');
@@ -174,7 +212,7 @@ function meta() {
     seeded: !!(doc && doc.updatedBy === 'seed'),
     counts: s.counts,
     journalSize: journal.length,
-    hasRollback: !!readDoc(PREV)
+    hasRollback: mysqlStore ? !!(doc && doc.version > 1) : !!readDoc(PREV)
   };
 }
 
@@ -195,6 +233,7 @@ function getType(type) {
  * @returns {{ok:boolean, errors?:Array, warnings?:Array, version?:number, count?:number, index?:object}}
  */
 function save(type, value, actor, baseVersion) {
+  if (mysqlStore) return saveMysql(type, value, actor, baseVersion);
   return withWriteLock(function () { return saveLocked(type, value, actor, baseVersion); });
 }
 
@@ -222,24 +261,20 @@ function saveLocked(type, value, actor, baseVersion) {
     return { ok: false, errors: check.errors, warnings: check.warnings, count: check.count };
   }
 
-  /* 2) 先落到运行时（不递增版本、不重建索引），让交叉校验读到新内容 */
-  overlay.apply(next, { version: doc.version, updatedAt: doc.updatedAt });
-
-  /* 3) 全量交叉校验：删掉一个体质/一味目录食材，会让既有茶方与量表失效 */
+  /* 2) 全量交叉校验：删掉一个体质/一味目录食材，会让既有茶方与量表失效 */
   const all = checkAll(next);
   if (all.errors.length) {
-    overlay.apply(prevPayload, { version: doc.version, updatedAt: doc.updatedAt });
     pushJournal({ at: Date.now(), action: 'reject', type: type, actor: actor, ok: false, version: doc.version, errors: all.errors });
     return {
       ok: false,
       errors: all.errors,
       warnings: dedupeWarnings(all.warnings),
       count: check.count,
-      hint: '本次修改会让其他内容失效，已自动还原'
+      hint: '本次修改会让其他内容失效，未发布'
     };
   }
 
-  /* 4) 备份上一版 → 落盘 → 正式发布 */
+  /* 3) 备份上一版 → 落盘 → 正式发布 */
   try {
     writeAtomic(PREV, doc);
     const newDoc = {
@@ -252,7 +287,6 @@ function saveLocked(type, value, actor, baseVersion) {
     writeAtomic(FILE, newDoc);
     doc = newDoc;
   } catch (e) {
-    overlay.apply(prevPayload, { version: doc.version, updatedAt: doc.updatedAt });
     pushJournal({ at: Date.now(), action: 'error', type: type, actor: actor, ok: false, version: doc.version, errors: [{ path: '', message: '写盘失败：' + e.message }] });
     return { ok: false, errors: [{ path: '', message: '写盘失败，已还原：' + e.message }] };
   }
@@ -292,8 +326,49 @@ function dedupeWarnings(list) {
   return out;
 }
 
+async function saveMysql(type, value, actor, baseVersion) {
+  await syncMysql(true);
+  if (!Number.isSafeInteger(baseVersion) || baseVersion !== doc.version) {
+    return { ok: false, conflict: true, version: doc.version, error: '内容版本已变化，请重新加载后再发布' };
+  }
+  if (overlay.TYPES.indexOf(type) < 0) {
+    return { ok: false, errors: [{ path: '', message: '未知内容类型：' + type }] };
+  }
+  const next = clone(doc.payload);
+  next[type] = clone(value);
+  const ids = (next.constitutions || []).map(function (c) { return c.id; });
+  const names = new Set();
+  (next.catalog || []).forEach(function (item) {
+    if (item.name) names.add(item.name);
+    if (item.alias) names.add(item.alias);
+  });
+  const check = schema.validate(type, next[type], { ids: ids, catalogNames: names });
+  if (!check.ok) {
+    pushJournal({ at: Date.now(), action: 'reject', type: type, actor: actor, ok: false, version: doc.version, errors: check.errors });
+    return { ok: false, errors: check.errors, warnings: check.warnings, count: check.count };
+  }
+  const all = checkAll(next);
+  if (all.errors.length) {
+    pushJournal({ at: Date.now(), action: 'reject', type: type, actor: actor, ok: false, version: doc.version, errors: all.errors });
+    return { ok: false, errors: all.errors, warnings: dedupeWarnings(all.warnings), count: check.count, hint: '本次修改会让其他内容失效，未发布' };
+  }
+  const committed = await mysqlStore.publish(baseVersion, next, actor || 'admin', type);
+  if (committed.conflict) {
+    applyCurrent(committed.current);
+    return { ok: false, conflict: true, version: doc.version, error: '内容版本已变化，请重新加载后再发布' };
+  }
+  const applied = applyCurrent(committed.doc);
+  lastDbCheck = Date.now();
+  const warnings = dedupeWarnings(all.warnings);
+  pushJournal({ at: doc.updatedAt, action: 'publish', type: type, actor: doc.updatedBy,
+    ok: true, version: doc.version, count: check.count, warnings: warnings.length });
+  return { ok: true, version: doc.version, updatedAt: doc.updatedAt,
+    count: check.count, warnings: warnings, counts: applied.info.counts, index: applied.index };
+}
+
 /** 回滚到上一版（版本号继续递增，客户端才会感知到变化） */
 function rollback(actor) {
+  if (mysqlStore) return restoreMysql(actor, 'rollback');
   return withWriteLock(function () { return rollbackLocked(actor); });
 }
 
@@ -329,7 +404,20 @@ function rollbackLocked(actor) {
 
 /** 丢弃本地改动、重新用内置数据播种（慎用，会覆盖后台所有编辑） */
 function reseed(actor) {
+  if (mysqlStore) return restoreMysql(actor, 'reseed');
   return withWriteLock(function () { return reseedLocked(actor); });
+}
+
+async function restoreMysql(actor, mode) {
+  await syncMysql(true);
+  const result = await mysqlStore.restore(actor || 'admin', mode, clone(BUILTIN_PAYLOAD));
+  if (result.missing) return { ok: false, error: '没有可回滚的上一版' };
+  const applied = applyCurrent(result.doc);
+  lastDbCheck = Date.now();
+  pushJournal({ at: doc.updatedAt, action: mode, type: '*', actor: doc.updatedBy,
+    ok: true, version: doc.version });
+  return { ok: true, version: doc.version, updatedAt: doc.updatedAt,
+    counts: applied.info.counts, index: applied.index };
 }
 
 function reseedLocked(actor) {
@@ -353,6 +441,7 @@ function reseedLocked(actor) {
 }
 
 function recentJournal(n) {
+  if (mysqlStore) return mysqlStore.recent(n);
   return journal.slice(-(n || 30)).reverse();
 }
 

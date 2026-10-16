@@ -144,8 +144,10 @@ node server/scripts/smoke-security.js  # 安全边界：隐私剥离 / 审计鉴
 | `ADMIN_OPENIDS` | — | 微信云托管管理员 OpenID 白名单，逗号分隔 |
 | `ADMIN_MAX_LOGIN_FAILS` | `5` | 同一 IP 连续登录失败几次后锁定 |
 | `ADMIN_LOCK_MS` | `300000` | 锁定时长（毫秒，默认 5 分钟） |
-| `STORAGE_DIR` | `server/storage` | 内容库与审计日志落盘目录。**容器部署必须挂 volume** |
-| `STORAGE_MOUNT_PATH` | — | 生产启用管理端时必填；服务验证挂载点存在且可写 |
+| `CONTENT_STORAGE` | `file` | 云托管在线管理设为 `mysql`；本地测试保留 `file` |
+| `MYSQL_HOST` / `MYSQL_PORT` | — / `3306` | MySQL 内网地址与端口 |
+| `MYSQL_USER` / `MYSQL_PASSWORD` / `MYSQL_DATABASE` | — | MySQL 账号、密码、数据库名；仅配置在云托管环境 |
+| `STORAGE_DIR` | `server/storage` | 本地文件模式的内容库与审计日志目录；MySQL 模式下只存临时审计文件 |
 | `AUDIT_RETENTION_DAYS` | `7` | 审计日志保留天数，按天分文件、过期自动清理 |
 
 ---
@@ -400,7 +402,11 @@ node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
 | `server/storage/content.prev.json` | 上一版备份，供回滚 | 否 |
 | `server/storage/audit-YYYY-MM-DD.jsonl` | 风控与工具调用留痕，按天切分 | 否 |
 
-**容器部署务必挂 volume**，否则重启就丢后台改动。
+微信云托管开启在线管理时，配置 `CONTENT_STORAGE=mysql` 与 `MYSQL_*` 内网连接变量。当前内容和每次发布、回滚的完整历史在 MySQL 中；发布使用事务和版本冲突检查。服务实例每隔最多 5 秒检查版本，发现变化后更新运行时内容和检索索引。数据库不可用时请求返回错误，不会静默使用旧内容。
+
+`STORAGE_DIR` 在 MySQL 模式下只保存临时审计文件。管理端「变更记录」来自 MySQL 历史表，可跨重启查询；「审计日志」仍是当前容器的临时记录。上线前给数据库设置备份与费用告警，见 [云托管部署清单](../docs/cloudbase-deploy.md)。
+
+本地 Docker Compose 仍可使用 `CONTENT_STORAGE=file`。这种模式要持久化 `server/storage`：
 
 compose 里用的是**具名卷**（`chalifang-storage` / `chalifang-cache`）而不是绑定挂载：
 容器以非 root（uid 1000）运行，绑定挂载 `./storage` 时宿主机目录属主通常不是 1000，
@@ -411,13 +417,11 @@ compose 里用的是**具名卷**（`chalifang-storage` / `chalifang-cache`）�
 mkdir -p server/storage && sudo chown -R 1000:1000 server/storage
 ```
 
-**必须单实例部署。** 内容与撤销都写在本地磁盘，且热更新只作用于**当前进程**；
+**文件模式必须单实例部署。** 内容与撤销都写在本地磁盘，且热更新只作用于**当前进程**；
 用 `--scale` 扩容会让多个实例各读各的，表现为「后台改完内容，一部分用户的请求仍返回旧内容」
-且难以排查。要真正扩容，需改成共享存储（挂同一卷或用对象存储）并加「内容变更后广播刷新」。
+且难以排查。MySQL 模式下发布内容会在其他实例下一次版本检查后生效，但会话和限流仍是进程内状态，上线先保持单实例。
 
-**平台适配提醒**：托管平台若**不支持持久化卷**（很多单容器 PaaS 都不支持），
-`storage/` 会随每次重新部署被清空 —— 后台改的内容与审计日志全部丢失。
-上线前务必确认平台是否提供持久磁盘；若没有，需要把 `content.json` 与审计日志改存对象存储或数据库。
+**平台适配提醒**：文件模式部署在没有持久化卷的平台时，`storage/` 会随重新部署清空。生产环境开启在线管理时程序会拒绝使用文件模式启动。
 
 ---
 

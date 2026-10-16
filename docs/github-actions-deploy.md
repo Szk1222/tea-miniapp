@@ -179,10 +179,10 @@ docker pull ghcr.io/szk1222/chalifang-agent:latest
 docker rm -f chalifang-agent && docker run ...   # 或用 docker compose up -d
 ```
 
-> **单实例约束**：内容库与热更新是「进程内 + 本地磁盘」，**不要 `--scale`**，
-> 否则多个实例各读各的，内容会不一致。
+> **单实例约束**：文件模式的内容库与热更新是「进程内 + 本地磁盘」，**不要 `--scale`**。
+> 微信云托管的在线管理使用 MySQL，服务会定期检查内容版本；会话与限流仍在进程内，首版保持单实例。
 >
-> **持久化**：`chalifang-storage` 卷不能省 —— 否则后台改过的内容与审计日志会随容器重建清空。
+> **持久化**：本地 Compose 文件模式的 `chalifang-storage` 卷不能省。云托管在线管理需要 `CONTENT_STORAGE=mysql`，内容和发布历史在 MySQL；容器审计日志不持久化。
 
 ---
 

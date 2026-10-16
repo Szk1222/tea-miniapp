@@ -12,7 +12,7 @@ delete process.env.ADMIN_TOKEN;
 const content = require('../src/content.js');
 const server = require('../src/index.js').server;
 process.env.NODE_ENV = 'production';
-assert.throws(function () { content.init(); }, /持久化挂载/);
+assert.throws(function () { content.init(); }, /CONTENT_STORAGE=mysql/);
 delete process.env.NODE_ENV;
 
 async function main() {

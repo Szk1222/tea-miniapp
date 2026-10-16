@@ -1,6 +1,6 @@
 /**
  * HTTP 小工具：响应封装与请求体读取。
- * 服务端零依赖，只用 Node 内置 http，所以这些胶水代码得自己写。
+ * HTTP 层使用 Node 内置 http，所以这些胶水代码由本项目维护。
  */
 
 const cfg = require('./config.js');
@@ -72,7 +72,9 @@ function readBody(req, limit) {
     req.on('data', function (c) {
       size += c.length;
       if (size > (limit || 1024 * 1024)) {
-        reject(new Error('请求体过大'));
+        const error = new Error('请求体过大');
+        error.status = 413;
+        reject(error);
         req.destroy();
         return;
       }
@@ -81,7 +83,11 @@ function readBody(req, limit) {
     req.on('end', function () {
       const raw = Buffer.concat(chunks).toString('utf8');
       if (!raw) return resolve({});
-      try { resolve(JSON.parse(raw)); } catch (e) { reject(new Error('请求体不是合法 JSON')); }
+      try { resolve(JSON.parse(raw)); } catch (e) {
+        const error = new Error('请求体不是合法 JSON');
+        error.status = 400;
+        reject(error);
+      }
     });
     req.on('error', reject);
   });
