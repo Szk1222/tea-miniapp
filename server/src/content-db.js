@@ -14,7 +14,8 @@ function getPool() {
       host: db.host, port: db.port, user: db.user, password: db.password,
       database: db.database, charset: 'utf8mb4',
       waitForConnections: true, connectionLimit: 3, queueLimit: 20,
-      connectTimeout: 8000, enableKeepAlive: true
+      // 云开发 MySQL 自动暂停后首次连接可能需要唤醒时间。
+      connectTimeout: 30000, enableKeepAlive: true
     });
   }
   return pool;
