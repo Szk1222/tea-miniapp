@@ -12,6 +12,8 @@
 6. 继续让 `ADMIN_TOKEN` 留空，浏览器 `/admin` 因无公网入口不可用。管理员通过小程序「设置 → 内容管理」编辑；服务端只认可 `ADMIN_OPENIDS` 白名单中的微信 OpenID，绝不把令牌放进小程序包。先在真机调试控制台调用下面的接口读取**自己的** OpenID，然后把它填入云托管环境变量 `ADMIN_OPENIDS`；多个管理员用英文逗号分隔。重新发布服务版本并重新上传小程序体验版。管理员入口只对通过白名单的账号显示；服务端每次读写仍会独立校验身份。
 
    ```js
+   // 开发者工具默认走本地 HTTP，App.onLaunch 不会初始化云能力；控制台需先手动初始化。
+   wx.cloud.init({ env: 'chalifang-prod-d0gb3mua244b0e5ea' });
    wx.cloud.callContainer({
      config: { env: 'chalifang-prod-d0gb3mua244b0e5ea' },
      path: '/api/admin/status',
