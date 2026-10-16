@@ -22,6 +22,10 @@ App({
   },
 
   onLaunch() {
+    const cfg = require('./utils/config.js');
+    if (cfg.useCloud() && cfg.CLOUD_ENV_ID && wx.cloud && wx.cloud.init) {
+      wx.cloud.init({ env: cfg.CLOUD_ENV_ID });
+    }
     // 1) 同步套用上次缓存的内容库，保证首屏渲染用的就是最新已知内容。
     //    必须先于下面的档案读取，否则 contentVersion 与内容可能对不上。
     const boot = contentClient.bootstrap();

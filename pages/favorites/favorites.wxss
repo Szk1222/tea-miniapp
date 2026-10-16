@@ -66,6 +66,7 @@
 }
 
 .empty-btn {
+  box-sizing: border-box;
   margin-top: 36rpx;
   gap: 12rpx;
   padding: 0 48rpx;

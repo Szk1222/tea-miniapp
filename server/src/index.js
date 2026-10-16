@@ -9,6 +9,7 @@
  *   POST /api/agent/chat.json        非流式对话（便于联调 / 小程序降级）
  *   POST /api/agent/assess           体质量表评分（服务端复核）
  *   POST /api/agent/recommend        直接按条件取茶方
+ *   POST /api/agent/feedback         记录喝茶体感（会话内，不落盘）
  *   POST /api/agent/retrieve         RAG 检索调试（展示召回与打分）
  *   GET  /api/agent/knowledge        食材科普查询
  *
@@ -45,8 +46,11 @@ const ratelimit = require('./ratelimit.js');
 
 const engine = require('../../utils/engine.js');
 const agent = require('../../utils/agent.js');
+const feedback = require('../../utils/feedback.js');
+const knowledgePush = require('../../utils/knowledge-push.js');
 const CONSTITUTIONS = require('../../data/constitutions.js');
 const TEAS = require('../../data/teas.js');
+const KNOWLEDGE = require('../../data/knowledge.js');
 
 const STARTED_AT = Date.now();
 
@@ -60,8 +64,92 @@ function readBody(req, limit) {
   return httpUtil.readBody(req, limit || 256 * 1024);
 }
 
+function requestOwner(req) {
+  if (cfg.session.identityMode !== 'cloudbase') return '';
+  // 只可在微信云托管私有链路、公网访问关闭时信任此网关注入的头。
+  const openid = String(req.headers['x-wx-openid'] || '').trim();
+  if (!/^[A-Za-z0-9_-]{8,128}$/.test(openid)) {
+    const e = new Error('缺少微信云托管用户身份');
+    e.status = 401;
+    throw e;
+  }
+  return openid;
+}
+
 function publicCtx(ctx) {
   return { lastTeas: ctx.lastTeas || [], flags: ctx.flags || {} };
+}
+
+/**
+ * 把一次 RAG 命中的 chunk 映射成「科普推送」条目。
+ * 只认能跳到详情页的三种类型（食材 / 体质 / 常识）；茶方命中不推 ——
+ * 茶方本身已经以卡片形式出现在对话里了，再推一次是噪音。
+ * @returns {null|{kind:string,id:string,title:string,desc:string,tag:string}}
+ */
+function hitToPushItem(hit) {
+  if (!hit) return null;
+  const meta = hit.meta || {};
+  if (hit.type === 'ingredient' && meta.ingredientId) {
+    const ing = KNOWLEDGE.ingredients.filter(function (i) { return i.id === meta.ingredientId; })[0];
+    if (!ing) return null;
+    return { kind: 'ingredient', id: ing.id, title: ing.name, desc: ing.effect, tag: ing.nature };
+  }
+  if (hit.type === 'constitution' && meta.constitutionId) {
+    const c = CONSTITUTIONS.get(meta.constitutionId);
+    if (!c) return null;
+    return { kind: 'constitution', id: c.id, title: c.name, desc: c.short || c.brief, tag: '体质' };
+  }
+  if (hit.type === 'faq' && hit.docId) {
+    const idx = String(hit.docId).split(':')[1];
+    if (idx === undefined || idx === '') return null;
+    const f = KNOWLEDGE.faq[Number(idx)];
+    if (!f) return null;
+    const a = String(f.a || '');
+    return { kind: 'faq', id: String(idx), title: f.q, desc: a.slice(0, 60) + (a.length > 60 ? '…' : ''), tag: '常识' };
+  }
+  return null;
+}
+
+/**
+ * 本轮结束后的科普推送。
+ *
+ * 为什么由服务端主导：服务端掌握**本轮真实检索过什么**（search_knowledge 的命中），
+ * 比端上按「体质 + 关键词」猜要准。端上保留同一套挑选器作为本地模式的兜底
+ * （utils/knowledge-push.js 是两端共用的同一份实现），且端上在收到服务端推送后
+ * 不会再补推（见 pages/chat/chat.js 的 _serverPushed），避免重复两条。
+ */
+function buildKnowledgePush(ctx, input, hits) {
+  const items = [];
+  const keys = [];
+  const seen = {};
+
+  function put(it, key) {
+    if (!it || !it.id || seen[it.kind + ':' + it.id]) return;
+    if (items.length >= 3) return;
+    seen[it.kind + ':' + it.id] = 1;
+    items.push(it);
+    keys.push(key);
+  }
+
+  (hits || []).forEach(function (h) {
+    put(hitToPushItem(h), h.kind + ':' + h.id);
+  });
+
+  const auto = knowledgePush.build({
+    teas: ctx.lastTeas || [],
+    constitutionId: (ctx.profile && ctx.profile.constitutionId) || '',
+    keywords: [input || '']
+  });
+  if (auto) auto.items.forEach(function (it) { put(it, it.kind + ':' + it.id); });
+
+  if (!items.length) return null;
+  return {
+    type: 'knowledge',
+    title: '顺带了解',
+    subtitle: '这些内容和你刚聊到的话题有关',
+    items: items,
+    topicKey: keys.join('|')
+  };
 }
 
 /**
@@ -110,10 +198,10 @@ function stripSensitiveProfile(p) {
  * @param {object} body  { sessionId, message, profile, context }
  * @param {{onDelta:Function, onBlock:Function, onMeta:Function, signal:AbortSignal}} sink
  */
-async function runAgent(body, sink) {
+async function runAgent(body, sink, owner) {
   const t0 = Date.now();
   const input = String(body.message || '').trim().slice(0, 500);
-  const session_ = session.get(body.sessionId);
+  const session_ = session.get(body.sessionId, owner);
   const ctx = session_.ctx;
 
   // 档案一律先做最小化裁剪，绝不把端上可能带过来的敏感字段直接塞进 prompt
@@ -122,6 +210,10 @@ async function runAgent(body, sink) {
   if (body.context) {
     if (Array.isArray(body.context.lastTeas)) ctx.lastTeas = body.context.lastTeas;
     if (body.context.flags) ctx.flags = Object.assign({}, ctx.flags, body.context.flags);
+    // 体感记录同样不信任端上：枚举降级、控制字符剔除、限长后才进会话与提示词
+    if (Array.isArray(body.context.feedback)) {
+      session.putFeedback(session_, feedback.sanitizeIncoming(body.context.feedback, 20));
+    }
   }
 
   const meta = {
@@ -164,6 +256,7 @@ async function runAgent(body, sink) {
   const sanitizer = safety.makeStreamSanitizer(function (txt) { sink.onDelta(txt); });
   const blocks = [];
   const calledTools = [];
+  const retrievedHits = [];
   let fullText = '';
   let rounds = 0;
   let usedFallback = false;
@@ -195,6 +288,10 @@ async function runAgent(body, sink) {
         const tc = r.toolCalls[i];
         const out = await tools.run(tc.name, tc.arguments, ctx);
         calledTools.push({ name: tc.name, ok: !!(out.result && out.result.ok) });
+        // 记录本轮真正检索到的知识：结束时的科普推送优先推这些（比猜更准）
+        if (tc.name === 'search_knowledge' && out.result && Array.isArray(out.result.hits)) {
+          out.result.hits.forEach(function (h) { retrievedHits.push(h); });
+        }
         out.blocks.forEach(function (b) {
           blocks.push(b);
           sink.onBlock(b);
@@ -250,6 +347,19 @@ async function runAgent(body, sink) {
     sink.onBlock({ type: 'notice', text: agent.DISCLAIMER, tone: 'warn' });
   }
 
+  /* ---- 出站：科普推送（联动知识库）----
+   * 放在最后一屏之后，作为「顺带了解」递到用户手边。
+   * 本地兜底模式刻意不推：那种情况下端上会用同一份挑选器自己补推，
+   * 服务端再插一条就重复了。 */
+  if (!usedFallback && (blocks.length || calledTools.length)) {
+    const kb = buildKnowledgePush(ctx, input, retrievedHits);
+    const blk = tools.knowledgeBlock(kb);
+    if (blk) {
+      blocks.push(blk);
+      sink.onBlock(blk);
+    }
+  }
+
   /* ---- 会话记忆 ---- */
   session.push(session_, 'user', input);
   if (fullText) session.push(session_, 'assistant', fullText);
@@ -268,7 +378,13 @@ async function runAgent(body, sink) {
 /* ---------------- 路由 ---------------- */
 
 async function handleChat(req, res, stream) {
+  const owner = requestOwner(req);
   const body = await readBody(req);
+  if (cfg.session.identityMode === 'cloudbase' && !body.sessionId) {
+    const e = new Error('缺少会话标识');
+    e.status = 400;
+    throw e;
+  }
 
   if (!stream) {
     const collected = { blocks: [], text: '', meta: null, ctx: null };
@@ -276,9 +392,10 @@ async function handleChat(req, res, stream) {
       onMeta: function (m) { collected.meta = m; },
       onDelta: function (d) { collected.text += d; },
       onBlock: function (b) { collected.blocks.push(b); }
-    });
+    }, owner);
     collected.ctx = out.ctx;
-    if (!collected.text && out.text) collected.text = out.text;
+    collected.meta = out.meta || collected.meta;
+    if (!collected.text && !collected.blocks.length && out.text) collected.text = out.text;
     return sendJSON(res, 200, { ok: true, ...collected });
   }
 
@@ -291,7 +408,11 @@ async function handleChat(req, res, stream) {
 
   const ac = new AbortController();
   let closed = false;
-  req.on('close', function () { closed = true; ac.abort(); });
+  // IncomingMessage 的 close 在 POST 请求体读取完成后也会触发；
+  // 只有响应连接关闭才表示客户端离开，不能在正常生成开始前取消模型。
+  res.on('close', function () {
+    if (!res.writableEnded) { closed = true; ac.abort(); }
+  });
 
   const write = function (event, data) {
     if (closed) return;
@@ -304,7 +425,7 @@ async function handleChat(req, res, stream) {
       onMeta: function (m) { write('meta', m); },
       onDelta: function (d) { write('delta', { text: d }); },
       onBlock: function (b) { write('block', b); }
-    });
+    }, owner);
     write('done', { ctx: out.ctx, meta: out.meta });
   } catch (e) {
     write('error', { message: e.message || '服务异常' });
@@ -349,12 +470,24 @@ function route(req, res) {
 
   if (path === '/api/agent/chat' && req.method === 'POST') {
     if (!ratelimit.guard(req, res, 'chat')) return;
-    return handleChat(req, res, true).catch(function (e) { sendJSON(res, 400, { ok: false, error: e.message }); });
+    return handleChat(req, res, true).catch(function (e) { if (!res.headersSent) sendJSON(res, e.status || 400, { ok: false, error: e.message }); });
   }
 
   if (path === '/api/agent/chat.json' && req.method === 'POST') {
     if (!ratelimit.guard(req, res, 'chat')) return;
-    return handleChat(req, res, false).catch(function (e) { sendJSON(res, 400, { ok: false, error: e.message }); });
+    return handleChat(req, res, false).catch(function (e) { if (!res.headersSent) sendJSON(res, e.status || 400, { ok: false, error: e.message }); });
+  }
+
+  if (path === '/api/agent/session' && req.method === 'DELETE') {
+    if (!ratelimit.guard(req, res, 'api')) return;
+    let owner;
+    try { owner = requestOwner(req); }
+    catch (e) { return sendJSON(res, e.status || 401, { ok: false, error: e.message }); }
+    return readBody(req).then(function (body) {
+      if (!body.sessionId) return sendJSON(res, 400, { ok: false, error: '缺少会话标识' });
+      session.remove(body.sessionId, owner);
+      return sendJSON(res, 200, { ok: true });
+    }).catch(function (e) { sendJSON(res, 400, { ok: false, error: e.message }); });
   }
 
   if (path === '/api/agent/assess' && req.method === 'POST') {
@@ -367,6 +500,38 @@ function route(req, res) {
       const r = engine.analyze(answers);
       safety.audit('assess', { count: answers.length }, { main: r.main, percent: r.percent });
       return sendJSON(res, 200, { ok: true, result: r });
+    }).catch(function (e) { sendJSON(res, 400, { ok: false, error: e.message }); });
+  }
+
+  if (path === '/api/agent/feedback' && req.method === 'POST') {
+    if (!ratelimit.guard(req, res, 'chat')) return;
+    let owner;
+    try { owner = requestOwner(req); }
+    catch (e) { return sendJSON(res, e.status || 401, { ok: false, error: e.message }); }
+    return readBody(req).then(function (body) {
+      // 端上只在「已开启 AI 增强 + 单独同意」时才会走到这里；
+      // 服务端仍然按不可信输入处理：枚举降级、控制字符剔除、限长。
+      const rec = feedback.normalize(body || {});
+      if (!rec.teaId && !rec.teaName) {
+        return sendJSON(res, 400, { ok: false, error: '缺少茶方标识' });
+      }
+      if (cfg.session.identityMode === 'cloudbase' && !body.sessionId) return sendJSON(res, 400, { ok: false, error: '缺少会话标识' });
+      const s = session.get(body.sessionId, owner);
+      const total = session.putFeedback(s, [rec]);
+      const score = feedback.biasFromList(s.ctx.feedback, rec.constitutionId);
+      // 留痕只记结构化字段：自由描述属用户原话，不写进审计日志
+      safety.audit('feedback', {
+        teaId: rec.teaId, effect: rec.effect,
+        feelings: rec.feelings.length, hasNote: !!rec.note, taste: rec.taste
+      }, { total: total });
+      return sendJSON(res, 200, {
+        ok: true,
+        count: total,
+        preference: {
+          favorTeas: Object.keys(score.boost).filter(function (k) { return k.indexOf('#tag:') !== 0; }),
+          avoidTeas: (score.dislikedTeas || []).concat(Object.keys(score.penalty).filter(function (k) { return k.indexOf('#tag:') !== 0; }))
+        }
+      });
     }).catch(function (e) { sendJSON(res, 400, { ok: false, error: e.message }); });
   }
 
@@ -429,6 +594,12 @@ const server = http.createServer(function (req, res) {
 });
 
 if (require.main === module) {
+  if (process.env.NODE_ENV === 'production' && cfg.session.identityMode !== 'cloudbase') {
+    throw new Error('生产环境必须设置 SESSION_IDENTITY_MODE=cloudbase，并关闭服务公网访问');
+  }
+  if (process.env.NODE_ENV === 'production' && !cfg.llm.apiKey) {
+    throw new Error('生产环境缺少 LLM_API_KEY，AI 增强无法提供服务');
+  }
   // 先加载内容：会把管理后台发布过的内容覆盖到 data/*.js，并重建检索索引。
   // 顺序不能反 —— 索引必须建立在「最终生效的内容」之上。
   content.init();

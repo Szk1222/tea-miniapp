@@ -28,25 +28,38 @@ function evictIfNeeded() {
   for (let i = 0; i < drop && i < entries.length; i++) SESSIONS.delete(entries[i][0]);
 }
 
-function create(id) {
+function keyOf(id, owner) {
+  const safeId = String(id || '').slice(0, 100);
+  return String(owner || 'legacy') + ':' + safeId;
+}
+
+function create(id, owner) {
   const s = {
     id: id,
     createdAt: now(),
     updatedAt: now(),
-    ctx: { profile: null, lastTeas: [], flags: {} },
+    // feedback：用户上送的最小化体感记录（见 utils/feedback.js）。
+    // 只活在会话内存里、随 TTL 一起消失，**刻意不落盘** —— 体感属健康敏感信息。
+    ctx: { profile: null, lastTeas: [], flags: {}, feedback: [] },
     messages: []
   };
   evictIfNeeded();
-  SESSIONS.set(id, s);
+  SESSIONS.set(keyOf(id, owner), s);
   return s;
 }
 
-function get(id) {
+function get(id, owner) {
   const key = id || 'anonymous';
-  const s = SESSIONS.get(key);
-  if (!s) return create(key);
+  const storageKey = keyOf(key, owner);
+  const s = SESSIONS.get(storageKey);
+  if (!s) return create(key, owner);
   s.updatedAt = now();
   return s;
+}
+
+function remove(id, owner) {
+  if (!id) return false;
+  return SESSIONS.delete(keyOf(id, owner));
 }
 
 /** 滑动窗口：只保留最近 N 轮，控制 token 成本与上下文噪声 */
@@ -71,6 +84,19 @@ function prune() {
   return removed;
 }
 
+/**
+ * 合并一批体感记录到会话上下文（限量，新的在前）。
+ * @returns {number} 合并后会话里保留的记录数
+ */
+function putFeedback(session, records) {
+  if (!session || !records || !records.length) return (session && session.ctx.feedback || []).length;
+  const cur = session.ctx.feedback || [];
+  const merged = records.concat(cur).slice(0, 20);
+  session.ctx.feedback = merged;
+  session.updatedAt = now();
+  return merged.length;
+}
+
 function stats() {
   return {
     sessions: SESSIONS.size,
@@ -82,8 +108,10 @@ function stats() {
 
 module.exports = {
   get: get,
+  remove: remove,
   history: history,
   push: push,
   prune: prune,
+  putFeedback: putFeedback,
   stats: stats
 };

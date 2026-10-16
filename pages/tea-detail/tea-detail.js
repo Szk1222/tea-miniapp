@@ -2,6 +2,9 @@ const teas = require('../../data/teas.js');
 const constitutions = require('../../data/constitutions.js');
 const engine = require('../../utils/engine.js');
 const store = require('../../utils/store.js');
+const feedback = require('../../utils/feedback.js');
+
+const EFFECT_LABEL = { better: '有改善', same: '变化不大', worse: '不太舒服' };
 
 Page({
   data: {
@@ -17,7 +20,11 @@ Page({
     drugNotes: [],
     drugGeneral: '',
     usageCap: '',
-    courseText: ''
+    courseText: '',
+    /* 体感反馈 */
+    fbCount: 0,
+    fbText: '',
+    fbEffect: ''
   },
 
   onLoad(options) {
@@ -76,7 +83,28 @@ Page({
         : ''
     });
     store.addHistory(tea.id);
+    this.loadFeedback(tea.id);
     wx.setNavigationBarTitle({ title: tea.name });
+  },
+
+  onShow() {
+    if (this.data.tea) this.loadFeedback(this.data.tea.id);
+  },
+
+  /** 体感反馈：有记录就显示最近一条摘要，没有就显示引导 */
+  loadFeedback(teaId) {
+    const recs = feedback.listOfTea(teaId);
+    const latest = recs[0];
+    this.setData({
+      fbCount: recs.length,
+      fbEffect: latest ? (EFFECT_LABEL[latest.effect] || '已记录') : '',
+      fbText: recs.length ? feedback.summaryText(teaId) : ''
+    });
+  },
+
+  goFeedback() {
+    if (!this.data.tea) return;
+    wx.navigateTo({ url: '/pages/feedback/feedback?teaId=' + this.data.tea.id });
   },
 
   toggleFav() {

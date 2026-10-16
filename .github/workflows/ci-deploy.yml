@@ -28,7 +28,9 @@ on:
       - 'custom-tab-bar/**'
       - 'data/**'
       - 'utils/**'
+      - 'scripts/**'
       - 'server/**'
+      - 'Dockerfile'
       - 'app.js'
       - 'app.json'
       - 'app.wxss'
@@ -94,6 +96,32 @@ jobs:
             n=$((n + 1))
           done < <(find . -name '*.json' -not -path './node_modules/*' -not -path './.git/*')
           echo "✓ JSON 可解析：$n 个文件"
+
+      # WXML 的 bind/catch 名与 JS 方法名不一致时不会报错，只表现为「点不动」。
+      # 这类问题必须在合并前静态拦下，不能等真机复现。
+      - name: 事件绑定一致性检查
+        run: node scripts/check-bindings.js
+
+      # WXML 写了 class 但 WXSS 漏了规则，小程序同样不报错，
+      # 表现是整段样式丢失（display:flex 没生效 → 图标/文案/箭头竖着堆成一列）。
+      - name: 类名与样式一致性检查
+        run: node scripts/check-styles.js
+
+      # pages/ 下出现「未注册进 app.json 的 .wxml」（半成品页面、临时探针目录）
+      # 同样不报错，却会被开发者工具的文件监听收编进编译任务。
+      # 真实事故：一次性探针目录被删掉后，工具的文件监听进程仍在内存监视表里保留它，
+      # 之后每次编译都 ENOENT 去开那个不存在的 wxss，在工具里「清除缓存」也无效，
+      # 只能完全退出开发者工具。本检查把这类残留拦在合并前。
+      - name: 页面注册一致性检查
+        run: node scripts/check-pages.js
+
+      # utils/agent.js 是顺序敏感的分支链（体感反馈必须排在食材科普之前……），
+      # 改一处很容易静默影响另一处，所以把关键路由固化成断言。
+      - name: 对话意图路由回归
+        run: node scripts/check-agent-routes.js
+
+      - name: 云托管客户端链路回归
+        run: node scripts/check-cloud-client.js
 
       # 这道防线是刻意加的：server/ 与小程序同仓，一旦 .env 被误提交，
       # 密钥就等于公开（方舟额度记在开发者账号上，会被刷真实资费）
@@ -173,7 +201,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: server/Dockerfile
+          file: Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -191,6 +219,9 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+
+      - name: 发布配置硬闸门
+        run: node scripts/check-release.js
 
       - name: 准备 Node
         uses: actions/setup-node@v4

@@ -2,14 +2,13 @@
  * 进程内限流器（固定窗口计数）。
  *
  * 存在意义：对话接口会调用大模型，而模型额度记在**开发者账号**上。
- * 接口一旦公开且无限流，任何人拿到域名（反编译小程序即可取得）都能脚本刷量，
- * 产生真实资费。限额的目标不是防 DDoS，而是把「被刷爆」的成本压到可接受范围。
+ * 限额的目标是控制模型调用成本，不代替云平台防护或账单告警。
  *
  * 已知局限（部署时必须知道）：
  *   1. **单进程、内存态**。多实例部署时各限各的，阈值等价于乘以实例数；
  *      要精确全局限流，请放到 Nginx（limit_req）或共享存储（Redis）。
- *   2. **IP 可伪造**。若反向代理未覆写 X-Forwarded-For，客户端可自带该头绕过限流。
- *      Nginx 侧必须写：proxy_set_header X-Forwarded-For $remote_addr;
+ *   2. 云托管私有链路按网关注入的 OpenID 限流，要求服务关闭公网访问；
+ *      旧式自建代理模式按 IP，必须由代理覆写 X-Forwarded-For。
  *   3. 固定窗口在窗口边界存在最多 2 倍突发，对本场景（防刷量）足够。
  */
 const cfg = require('./config.js');
@@ -19,6 +18,10 @@ const BUCKETS = new Map();
 
 /** 从请求中取客户端 IP。优先级：反向代理写入的头 → 直连地址 */
 function clientIp(req) {
+  if (cfg.session.identityMode === 'cloudbase') {
+    const openid = String(req.headers['x-wx-openid'] || '');
+    return /^[A-Za-z0-9_-]{8,128}$/.test(openid) ? 'wx:' + openid : 'wx:missing';
+  }
   const real = req.headers['x-real-ip'];
   if (real) return String(real).trim();
   const xf = req.headers['x-forwarded-for'];

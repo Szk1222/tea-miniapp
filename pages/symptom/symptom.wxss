@@ -1,0 +1,254 @@
+/* 补充症状页
+   真机注意：标签一律用 <view> 承载（固定高度 + line-height 居中），不用行内 <text>；
+   按钮并排用 flex + 百分比宽度，不用 calc、不用 flex gap。 */
+
+.sy {
+  box-sizing: border-box;
+  padding-bottom: 20rpx;
+}
+
+/* ---------------- 顶部 ---------------- */
+.sy-hero {
+  padding: 24rpx 32rpx 26rpx;
+  background: linear-gradient(160deg, #EAF3EE 0%, #F5F7F4 100%);
+}
+
+.sy-hero__row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.sy-hero__icon {
+  flex: 0 0 auto;
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 24rpx;
+  background: #2E6B4F;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sy-hero__text {
+  flex: 1;
+  min-width: 0;
+  margin-left: 20rpx;
+}
+
+.sy-hero__title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #17251D;
+}
+
+.sy-hero__desc {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #5A6A61;
+}
+
+.sy-hero__privacy {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  margin-top: 20rpx;
+  padding: 14rpx 20rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #7C8A80;
+}
+
+/* 选择器一律用类名，不用标签名（`.sy-note text` 这类会被开发者工具的
+   wxss 编译器判为 illegal selector，直接中断编译） */
+.sy-hero__privacy-text {
+  flex: 1;
+  min-width: 0;
+  margin-left: 10rpx;
+}
+
+/* ---------------- 输入框 ---------------- */
+.sy-box {
+  margin-top: 26rpx;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E9EDE8;
+  box-shadow: 0 6rpx 24rpx rgba(28, 56, 41, 0.06);
+}
+
+.sy-box__area {
+  width: 100%;
+  min-height: 190rpx;
+  font-size: 28rpx;
+  line-height: 1.68;
+  color: #17251D;
+}
+
+.sy-box__ph {
+  color: #A9B4AC;
+  font-size: 26rpx;
+}
+
+.sy-box__foot {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid #F1F3F0;
+}
+
+.sy-box__count {
+  font-size: 22rpx;
+  color: #B7C1BA;
+}
+
+.sy-box__clear {
+  box-sizing: border-box;
+  height: 48rpx;
+  padding: 0 22rpx;
+  border-radius: 999rpx;
+  background: #F3F5F3;
+  color: #7C8A80;
+  font-size: 22rpx;
+  line-height: 48rpx;
+}
+
+/* ---------------- 实时方向提示 ---------------- */
+.sy-hit {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  margin-top: 22rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 20rpx;
+  background: #EAF3EE;
+  border: 1rpx solid #CFE3D7;
+}
+
+.sy-hit__body {
+  flex: 1;
+  min-width: 0;
+  margin-left: 14rpx;
+}
+
+.sy-hit__title {
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #21503A;
+}
+
+.sy-hit__desc {
+  margin-top: 6rpx;
+  font-size: 23rpx;
+  line-height: 1.6;
+  color: #4A5A50;
+}
+
+/* ---------------- 示例 ---------------- */
+.sy-examples {
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  border: 1rpx solid #E9EDE8;
+  overflow: hidden;
+}
+
+.sy-ex {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 26rpx 28rpx;
+  border-bottom: 1rpx solid #F1F3F0;
+}
+
+.sy-ex:last-child {
+  border-bottom: none;
+}
+
+.sy-ex--hover {
+  background: #FAFBF9;
+}
+
+.sy-ex__text {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+  line-height: 1.5;
+  color: #35473C;
+}
+
+/* ---------------- 操作按钮 ---------------- */
+.sy-actions {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-top: 34rpx;
+}
+
+.sy-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  height: 92rpx;
+  border-radius: 999rpx;
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.sy-btn__text {
+  margin-left: 10rpx;
+}
+
+.sy-btn--ghost {
+  box-sizing: border-box;
+  width: 36%;
+  flex: 0 0 auto;
+  border: 1.5rpx solid #CFE3D7;
+  background: #FFFFFF;
+  color: #2E6B4F;
+  font-size: 24rpx;
+}
+
+.sy-btn--main {
+  box-sizing: border-box;
+  width: 60%;
+  flex: 0 0 auto;
+  background: #E6EBE6;
+  color: #A9B4AC;
+}
+
+.sy-btn--main.is-on {
+  background: #2E6B4F;
+  color: #FFFFFF;
+  box-shadow: 0 10rpx 24rpx rgba(46, 107, 79, 0.22);
+}
+
+.sy-btn--main.is-on:active {
+  background: #21503A;
+}
+
+/* ---------------- 底部说明 ---------------- */
+.sy-note {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  margin-top: 30rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 20rpx;
+  background: #F3F5F3;
+}
+
+.sy-note__text {
+  flex: 1;
+  min-width: 0;
+  margin-left: 12rpx;
+  font-size: 22rpx;
+  line-height: 1.66;
+  color: #7C8A80;
+}

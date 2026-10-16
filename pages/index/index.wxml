@@ -63,6 +63,19 @@
       <icon name="chevronRight" size="{{30}}" color="#C6CFC9" />
     </view>
 
+    <!-- 体感反馈入口（首屏）：喝完顺手记一句，推荐会据此调整 -->
+    <view class="fb-card" bindtap="goFeedback" hover-class="fb-card--hover" hover-stay-time="60">
+      <view class="fb-card__icon">
+        <icon name="activity" size="{{38}}" color="#FFFFFF" weight="{{1.7}}" />
+      </view>
+      <view class="fb-card__body">
+        <view class="fb-card__title">记录喝茶体感</view>
+        <view class="fb-card__desc">{{fbHint}}</view>
+      </view>
+      <view wx:if="{{fbCount}}" class="fb-card__count">{{fbCount}}</view>
+      <icon name="chevronRight" size="{{28}}" color="#C6CFC9" />
+    </view>
+
     <!-- 快捷入口 -->
     <view class="quick">
       <view class="quick__item" bindtap="goAssess">

@@ -3,7 +3,15 @@
    统一色板 / 字号 / 圆角 / 阴影 / 通用组件
    ========================================================= */
 
-page {
+/* ⚠️ 这里不能写 page{} —— 开发者工具把 app.wxss 也按「组件级作用域」编译，
+   标签名选择器会硬报 Some selectors are not allowed ... 并中断整个 wxss 编译。
+   （同一条规则：wxsc 每个文件只报**一处**，所以修掉一处会又冒出上一处，
+   必须整仓清零才算修好。）设计变量改挂在各页面的根容器 class 上。
+   全仓页面根容器只有两种：<view class="page ...">（12 个页面）与
+   <view class="chat-page">（问茶页）。custom-tab-bar 不用变量，无需列入。 */
+.page,
+.chat-page {
+  box-sizing: border-box;
   --brand: #2E6B4F;
   --brand-2: #3E8563;
   --brand-dark: #21503A;
@@ -43,12 +51,15 @@ page {
   -webkit-font-smoothing: antialiased;
 }
 
-view, text, scroll-view, button, input, textarea {
-  box-sizing: border-box;
-}
+/* ⚠️ 全局盒模型复位**不能**用标签名选择器（含 view/text/button/input/textarea），
+   也不能用 `*`（wcsc 会直接报 ERR: unexpected token `*`，退出码 1）。
+   ⇒ 复位语义已逐个下发到真正需要的 class 规则里（见各页 wxss 的 box-sizing）。
+   新增「尺寸 + 内边距/边框」同规则出现的元素时，该规则必须自带 box-sizing，
+   否则运行 `node scripts/check-styles.js` 会提示。 */
 
 /* ---------- 布局 ---------- */
 .page {
+  box-sizing: border-box;
   min-height: 100vh;
   background: var(--bg);
 }
@@ -241,6 +252,7 @@ view, text, scroll-view, button, input, textarea {
 
 /* ---------- 按钮 ---------- */
 .btn {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -278,6 +290,7 @@ view, text, scroll-view, button, input, textarea {
 }
 
 .btn-ghost {
+  box-sizing: border-box;
   background: transparent;
   color: var(--brand);
   border: 1.5rpx solid var(--brand-line);
@@ -342,6 +355,7 @@ view, text, scroll-view, button, input, textarea {
 
 /* ---------- 列表行 ---------- */
 .cell {
+  box-sizing: border-box;
   display: flex;
   flex-direction: row;
   align-items: center;

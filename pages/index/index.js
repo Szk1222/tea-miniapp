@@ -2,6 +2,7 @@ const store = require('../../utils/store.js');
 const engine = require('../../utils/engine.js');
 const teas = require('../../data/teas.js');
 const constitutions = require('../../data/constitutions.js');
+const feedback = require('../../utils/feedback.js');
 
 const SEASON_TIP = {
   '春': '春季重在疏肝理气，宜气味芬芳、性质平和的茶饮。',
@@ -22,7 +23,9 @@ Page({
     seasonal: [],
     allTeas: [],
     constitutions: [],
-    teaTotal: 0
+    teaTotal: 0,
+    fbCount: 0,
+    fbHint: '喝完顺手记一句，之后推荐会跟着调整。'
   },
 
   onLoad() {
@@ -74,10 +77,22 @@ Page({
     if (profile && profile.constitutionId) {
       mainConstitution = constitutions.getOr(profile.constitutionId);
     }
+    // 体感反馈：首页首屏给一个轻量入口，顺带展示已记录条数与最近一款
+    const fbStat = feedback.stats();
+    const recent = feedback.list()[0];
+    const fbHint = fbStat.total
+      ? ('已记录 ' + fbStat.total + ' 次' + (recent && recent.teaName ? ' · 最近：' + recent.teaName : ''))
+      : '喝完顺手记一句，之后推荐会跟着调整。';
     this.setData({
       profile: profile && profile.constitutionId ? profile : null,
-      mainConstitution: mainConstitution
+      mainConstitution: mainConstitution,
+      fbCount: fbStat.total,
+      fbHint: fbHint
     });
+  },
+
+  goFeedback() {
+    wx.navigateTo({ url: '/pages/feedback/feedback' });
   },
 
   goAssess() {

@@ -127,6 +127,7 @@ module.exports = {
     }
     return id;
   },
+  peekSessionId() { return read(KEYS.SESSION, ''); },
   resetSessionId() {
     const id = newSessionId();
     write(KEYS.SESSION, id);

@@ -1,5 +1,7 @@
 # 把 agent.js 换成真实大模型：接入与验证
 
+> 当前小程序体验版和正式版改走微信云托管私有链路。本文关于 `API_BASE_LAN` / `API_BASE_PROD` 的说明已过时，请以 [cloudbase-deploy.md](cloudbase-deploy.md) 为准。
+
 > 目标：保留「体质判定 / 茶方匹配必须走硬规则」这条底线，用大模型替掉 `utils/agent.js` 里的**文案模板与意图识别**。
 
 ---

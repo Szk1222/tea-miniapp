@@ -158,18 +158,19 @@ async function main() {
     ok('对话请求成功返回', r1.status === 200 && j1.ok === true, r1.status);
 
     const sent = mock.captured[mock.captured.length - 1] || '';
-    ok('确有请求送达模型', sent.length > 0);
+    ok('高风险档案被确定性拦截，未送模型', sent.length === 0);
     ok('未出现「basic」字段', sent.indexOf('"basic"') === -1);
     ok('未上传性别原文', sent.indexOf(SENTINEL.gender) === -1);
     ok('未上传年龄原文', sent.indexOf(SENTINEL.age) === -1);
     ok('未上传特殊阶段原文', sent.indexOf(SENTINEL.stage) === -1);
     ok('未上传健康情况原文', sent.indexOf(SENTINEL.condition) === -1);
     ok('未上传过敏史原文', sent.indexOf(SENTINEL.allergy) === -1);
-    // 但风险标记必须保留，否则等于把「先做风险提示、不给配方」的合规安全网一起删了
-    ok('风险标记 stage 仍生效', sent.indexOf('需要特别提示的生理阶段') > -1);
-    ok('风险标记 chronic 仍生效', sent.indexOf('基础健康情况或长期服药') > -1);
-    ok('风险标记 allergy 仍生效', sent.indexOf('过敏史') > -1);
-    ok('体质类型仍保留（产品核心功能）', sent.indexOf('平和质') > -1 || sent.indexOf('pinghe') > -1);
+    ok('返回风险拦截状态', j1.meta && j1.meta.mode === 'safety-short-circuit');
+    ok('不返回茶方卡片', !j1.blocks.some(function (b) { return b.type === 'teas'; }));
+    const auditText = fs.readdirSync(TMP).filter(function (f) { return /^audit-/.test(f); })
+      .map(function (f) { return fs.readFileSync(path.join(TMP, f), 'utf8'); }).join('');
+    ok('审计日志不保存健康描述原文', auditText.indexOf('最近总是没力气') === -1);
+    ok('审计日志不保存档案原文', Object.keys(SENTINEL).every(function (k) { return auditText.indexOf(SENTINEL[k]) === -1; }));
 
     /* ---------------- 2. 鉴权：审计接口 ---------------- */
     console.log('\n【鉴权：审计留痕接口】');

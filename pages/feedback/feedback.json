@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "记录体感",
+  "usingComponents": {
+    "icon": "/components/icon/icon"
+  }
+}

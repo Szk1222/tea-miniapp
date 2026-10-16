@@ -139,6 +139,28 @@
       </view>
     </view>
 
+    <!-- 体感反馈：喝过之后顺手记一句，后续推荐会据此调整 -->
+    <view class="section-head">
+      <view class="section-title">喝过之后的感觉</view>
+      <view wx:if="{{fbCount}}" class="section-more">已记录 {{fbCount}} 次</view>
+    </view>
+    <view class="fb-entry" bindtap="goFeedback" hover-class="fb-entry--hover" hover-stay-time="60">
+      <view class="fb-entry__icon {{fbCount ? 'is-on' : ''}}">
+        <icon name="activity" size="{{34}}" color="{{fbCount ? '#2E6B4F' : '#B9873A'}}" weight="{{1.7}}" />
+      </view>
+      <view class="fb-entry__body">
+        <block wx:if="{{fbCount}}">
+          <view class="fb-entry__title">最近一次：{{fbEffect}}</view>
+          <view class="fb-entry__desc">{{fbText}}</view>
+        </block>
+        <block wx:else>
+          <view class="fb-entry__title">记录喝完的真实感受</view>
+          <view class="fb-entry__desc">感觉不错的会优先再推给你，口味不太喜欢的会往后放。</view>
+        </block>
+      </view>
+      <view class="fb-entry__btn">{{fbCount ? '再记一次' : '去记录'}}</view>
+    </view>
+
     <!-- 禁忌人群（与个人档案无关，是这款茶方本身的适用边界） -->
     <block wx:if="{{contra.length}}">
       <view class="section-head">

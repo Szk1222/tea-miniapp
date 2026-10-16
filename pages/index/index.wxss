@@ -1,5 +1,6 @@
 /* ---------------- Hero ---------------- */
 .hero {
+  box-sizing: border-box;
   position: relative;
   overflow: hidden;
   padding: 36rpx 32rpx 44rpx;
@@ -32,6 +33,7 @@
 }
 
 .hero__logo {
+  box-sizing: border-box;
   width: 76rpx;
   height: 76rpx;
   border-radius: 22rpx;
@@ -98,6 +100,7 @@
 }
 
 .hero__btn {
+  box-sizing: border-box;
   flex: 1;
   height: 92rpx;
   border-radius: 999rpx;
@@ -122,6 +125,7 @@
 }
 
 .hero__btn--outline {
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.1);
   border: 1.5rpx solid rgba(255, 255, 255, 0.4);
   color: #FFFFFF;
@@ -181,6 +185,13 @@
   color: #93A099;
 }
 
+.profile-card__left {
+  /* 主区块撑满剩余宽度（配 min-width:0 才不会把右侧挤出去），
+     体质名较长时也不会顶掉右下角的「查看详情」 */
+  flex: 1;
+  min-width: 0;
+}
+
 .profile-card__right {
   display: flex;
   flex-direction: column;
@@ -235,6 +246,70 @@
   margin-top: 6rpx;
   font-size: 23rpx;
   color: #87958B;
+}
+
+/* ---------------- 体感反馈入口（首屏） ---------------- */
+.fb-card {
+  margin-top: 20rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 28rpx 30rpx;
+  border-radius: 28rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #DCEBE1;
+  box-shadow: 0 6rpx 24rpx rgba(46, 107, 79, 0.07);
+}
+
+.fb-card--hover {
+  background: #F6FBF8;
+}
+
+.fb-card__icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 22rpx;
+  background: #2E6B4F;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.fb-card__body {
+  flex: 1;
+  min-width: 0;
+  margin-left: 20rpx;
+}
+
+.fb-card__title {
+  font-size: 29rpx;
+  font-weight: 600;
+  color: #17251D;
+}
+
+.fb-card__desc {
+  margin-top: 6rpx;
+  font-size: 23rpx;
+  color: #87958B;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fb-card__count {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-width: 40rpx;
+  height: 40rpx;
+  padding: 0 12rpx;
+  margin-right: 8rpx;
+  border-radius: 999rpx;
+  background: #E8F1EC;
+  color: #2E6B4F;
+  font-size: 22rpx;
+  line-height: 40rpx;
+  text-align: center;
 }
 
 /* ---------------- 快捷入口 ---------------- */

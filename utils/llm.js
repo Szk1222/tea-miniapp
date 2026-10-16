@@ -10,6 +10,7 @@
  *    连续失败达到阈值就冷却一段时间，期间直接走本地规则引擎。
  */
 const CFG = require('./config.js');
+const transport = require('./transport.js');
 
 /* ---------------- 熔断状态 ---------------- */
 
@@ -106,6 +107,7 @@ function createSseParser(handlers) {
  * @returns {{promise:Promise, abort:Function}}
  */
 function chat(opts) {
+  if (CFG.useCloud()) return cloudChat(opts);
   const handlers = {
     meta: function (m) { opts.onMeta && opts.onMeta(m); },
     delta: function (d) { opts.onDelta && opts.onDelta(d.text || ''); },
@@ -184,6 +186,27 @@ function chat(opts) {
   };
 }
 
+/** 云托管 callContainer 的普通 JSON 响应；真实流式能力待真机验证后再开启。 */
+function cloudChat(opts) {
+  const task = transport.request({
+    path: '/api/agent/chat.json',
+    method: 'POST',
+    timeout: CFG.TIMEOUT,
+    header: { 'Content-Type': 'application/json' },
+    data: { sessionId: opts.sessionId, message: opts.message, profile: opts.profile || null, context: opts.context || null }
+  });
+  const promise = task.promise.then(function (res) {
+    const data = res && res.data;
+    if (!res || res.statusCode >= 400 || !data || !data.ok) throw new Error((data && data.error) || '服务返回异常');
+    if (data.meta && opts.onMeta) opts.onMeta(data.meta);
+    if (data.text && opts.onDelta) opts.onDelta(data.text);
+    (data.blocks || []).forEach(function (block) { if (opts.onBlock) opts.onBlock(block); });
+    noteSuccess();
+    return { ctx: data.ctx, meta: data.meta };
+  }).catch(function (err) { if (!err || !err.cancelled) noteFailure(); throw err; });
+  return { promise: promise, abort: task.abort };
+}
+
 /**
  * 非流式兜底：个别基础库不支持 enableChunked，退回一次完整请求。
  */
@@ -194,27 +217,18 @@ function chatOnce(opts) {
     profile: opts.profile || null,
     context: opts.context || null
   };
-  return new Promise(function (resolve, reject) {
-    wx.request({
-      url: CFG.API_BASE + '/api/agent/chat.json',
-      method: 'POST',
-      timeout: CFG.TIMEOUT,
-      header: { 'Content-Type': 'application/json' },
-      data: payload,
-      success: function (res) {
+  return transport.request({ path: '/api/agent/chat.json', method: 'POST', timeout: CFG.TIMEOUT,
+    header: { 'Content-Type': 'application/json' }, data: payload }).promise.then(function (res) {
         if (res.statusCode >= 400 || !res.data || !res.data.ok) {
           noteFailure();
-          return reject(new Error('服务返回 ' + (res.statusCode || '异常')));
+          throw new Error('服务返回 ' + (res.statusCode || '异常'));
         }
         noteSuccess();
-        resolve(res.data);
-      },
-      fail: function (err) {
+        return res.data;
+      }, function (err) {
         noteFailure();
-        reject(new Error((err && err.errMsg) || '网络异常'));
-      }
-    });
-  });
+        throw new Error((err && err.errMsg) || '网络异常');
+      });
 }
 
 module.exports = {

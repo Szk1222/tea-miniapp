@@ -1,4 +1,5 @@
 .tabs {
+  box-sizing: border-box;
   position: sticky;
   top: 0;
   z-index: 20;
@@ -90,6 +91,7 @@
 /* 胶囊标签：同 chat 顶部标签，必须由 block 盒子承载 padding + 圆角 + 底色，
    挂在行内 <text> 上真机会被压扁、圆角与底色渲染异常 */
 .c-item__mine {
+  box-sizing: border-box;
   flex: 0 0 auto;
   height: 36rpx;
   padding: 0 14rpx;

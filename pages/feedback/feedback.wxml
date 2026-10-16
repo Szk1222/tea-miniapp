@@ -1,0 +1,191 @@
+<view class="page fb">
+
+  <!-- 顶部说明 -->
+  <view class="fb-hero">
+    <view class="fb-hero__row">
+      <view class="fb-hero__icon">
+        <icon name="activity" size="{{40}}" color="#FFFFFF" weight="{{1.7}}" />
+      </view>
+      <view class="fb-hero__text">
+        <view class="fb-hero__title">记录喝茶体感</view>
+        <view class="fb-hero__desc">喝完之后的感觉，会用来调整之后的推荐：感觉不错的优先再推，不太喜欢的往后放。</view>
+      </view>
+    </view>
+    <view class="fb-hero__privacy">
+      <icon name="shield" size="{{26}}" color="#7C8A80" weight="{{1.7}}" />
+      <text class="fb-hero__privacy-text">记录默认只保存在你本机，不会自动上传。</text>
+    </view>
+  </view>
+
+  <view class="container">
+
+    <!-- ============ 选茶方 ============ -->
+    <block wx:if="{{mode === 'pick'}}">
+
+      <view class="section-head">
+        <view class="section-title">选择要记录的茶方</view>
+        <view class="section-more" bindtap="goKnowledge">
+          <text>没喝过？看茶方库</text>
+          <icon name="chevronRight" size="{{24}}" color="#93A099" />
+        </view>
+      </view>
+
+      <view class="picker">
+        <view
+          class="picker__row"
+          wx:for="{{candidates}}"
+          wx:key="id"
+          data-id="{{item.id}}"
+          bindtap="pickTea"
+          hover-class="picker__row--hover"
+          hover-stay-time="60"
+        >
+          <view class="picker__icon">
+            <icon name="cup" size="{{36}}" color="#2E6B4F" weight="{{1.7}}" />
+          </view>
+          <view class="picker__body">
+            <view class="picker__name">{{item.name}}</view>
+            <view class="picker__sub">{{item.subtitle}}</view>
+          </view>
+          <view class="picker__btn">记录</view>
+        </view>
+        <view wx:if="{{!candidates.length}}" class="empty">还没有可记录的茶方，先去茶方库看看吧。</view>
+      </view>
+
+    </block>
+
+    <!-- ============ 填体感 ============ -->
+    <block wx:else>
+
+      <view class="tea-brief">
+        <view class="tea-brief__body">
+          <view class="tea-brief__name">{{tea.name}}</view>
+          <view class="tea-brief__sub">{{tea.subtitle}}</view>
+          <view class="tea-brief__meta" style="background:{{c.soft}};color:{{c.color}}">{{c.name}}方向</view>
+        </view>
+        <view class="tea-brief__back" bindtap="backToPick">换一款</view>
+      </view>
+
+      <view class="section-head">
+        <view class="section-title">总体感受<text class="req">必选</text></view>
+      </view>
+      <view class="chip-grid">
+        <view
+          class="fx-chip {{effect === item.id ? 'is-on' : ''}}"
+          wx:for="{{effects}}"
+          wx:key="id"
+          data-v="{{item.id}}"
+          bindtap="pickEffect"
+        >
+          <view class="fx-chip__label">{{item.label}}</view>
+          <view class="fx-chip__hint">{{item.hint}}</view>
+        </view>
+      </view>
+
+      <view class="section-head">
+        <view class="section-title">具体感受到的变化<text class="field__sub">可多选，也可以不选</text></view>
+      </view>
+      <view class="feel-wrap">
+        <view
+          class="feel {{feelingSel[item.id] ? 'is-on' : ''}} {{item.good ? '' : 'feel--neg'}}"
+          wx:for="{{feelings}}"
+          wx:key="id"
+          data-v="{{item.id}}"
+          bindtap="toggleFeeling"
+        >{{item.label}}</view>
+      </view>
+
+      <view class="section-head">
+        <view class="section-title">口味<text class="field__sub">选填</text></view>
+      </view>
+      <view class="feel-wrap taste-wrap">
+        <view
+          class="feel taste {{taste === item.id ? 'is-on' : ''}}"
+          wx:for="{{tastes}}"
+          wx:key="id"
+          data-v="{{item.id}}"
+          bindtap="pickTaste"
+        >{{item.label}}</view>
+      </view>
+
+      <view class="section-head">
+        <view class="section-title">还想补充点什么<text class="field__sub">选填</text></view>
+      </view>
+      <view class="note-box">
+        <textarea
+          class="note-box__area"
+          value="{{note}}"
+          maxlength="200"
+          placeholder="例如：喝了三天，晚上入睡快了一些；白天还是有点困。只描述日常体感即可。"
+          placeholder-class="note-box__ph"
+          bindinput="onNote"
+        />
+        <view class="note-box__foot">
+          <text class="note-box__count">{{note.length}}/200</text>
+          <view wx:if="{{note}}" class="note-box__clear" bindtap="clearNote">清空</view>
+        </view>
+      </view>
+
+      <!-- AI 增强开启时才提供上送选项；未开启时明确告知不上传 -->
+      <view wx:if="{{canUpload}}" class="upload-row" bindtap="toggleUploadNote">
+        <view class="upload-row__box {{uploadNote ? 'is-on' : ''}}">
+          <icon wx:if="{{uploadNote}}" name="check" size="{{22}}" color="#FFFFFF" weight="{{2.6}}" />
+        </view>
+        <view class="upload-row__text">允许把上面的描述一并发送给养生顾问（仅在 AI 增强开启时），帮助顾问更懂你的体感。不上传性别、年龄、慢性病与过敏史等原始信息。</view>
+      </view>
+      <view wx:else class="upload-off">
+        <icon name="info" size="{{26}}" color="#98A69C" weight="{{1.7}}" />
+        <text class="upload-off__text">当前为本地模式，这条记录只保存在本机，不会发出任何网络请求。</text>
+      </view>
+
+      <view class="submit {{effect ? 'is-on' : ''}}" bindtap="submit">
+        <icon name="check" size="{{34}}" color="{{effect ? '#FFFFFF' : '#BCC7C0'}}" weight="{{2.2}}" />
+        <text class="submit__text">保存这条体感</text>
+      </view>
+
+      <!-- 提交结果 -->
+      <view wx:if="{{done}}" class="done done--{{doneTone}}">
+        <view class="done__head">
+          <icon name="{{doneTone === 'warn' ? 'alert' : 'checkCircle'}}" size="{{34}}" color="{{doneTone === 'warn' ? '#B9873A' : '#2E6B4F'}}" weight="{{1.8}}" />
+          <text class="done__title">{{doneTone === 'warn' ? '已记录，请先留意身体反应' : '已记录'}}</text>
+        </view>
+        <text class="done__line" wx:for="{{doneText}}" wx:key="*this">{{item}}</text>
+        <view class="done__actions">
+          <view class="done__btn done__btn--ghost" bindtap="backToPick">再记一款</view>
+          <view class="done__btn done__btn--main" bindtap="askAdvisor">去问顾问怎么调整</view>
+        </view>
+      </view>
+
+    </block>
+
+    <!-- ============ 我的记录 ============ -->
+    <block wx:if="{{records.length}}">
+      <view class="section-head">
+        <view class="section-title">我的体感记录</view>
+        <view class="section-more">{{records.length}} 条</view>
+      </view>
+      <view class="rec-list">
+        <view class="rec" wx:for="{{records}}" wx:key="id">
+          <view class="rec__body">
+            <view class="rec__top">
+              <text class="rec__name">{{item.teaName}}</text>
+              <text class="rec__tag rec__tag--{{item.tone}}">{{item.effectLabel}}</text>
+            </view>
+            <view wx:if="{{item.feelings.length}}" class="rec__feel">{{item.feelings}}</view>
+            <view class="rec__time">{{item.time}}</view>
+          </view>
+          <view class="rec__del" data-id="{{item.id}}" catchtap="removeRecord">
+            <icon name="trash" size="{{30}}" color="#B7C1BA" weight="{{1.7}}" />
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view class="fb-note">
+      <icon name="info" size="{{28}}" color="#98A69C" weight="{{1.7}}" />
+      <text class="fb-note__text">体感是主观感受，仅用于调整日常养生茶饮的推荐顺序，不构成任何效果承诺，也不替代专业医疗建议。如出现明确不适，请及时就医。</text>
+    </view>
+
+    <view class="page-bottom-gap"></view>
+  </view>
+</view>

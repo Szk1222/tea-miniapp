@@ -180,6 +180,16 @@
         <icon name="shield" size="{{26}}" color="#98A69C" weight="{{1.7}}" />
         <text>以上信息只保存在你本机、不会上传；命中的配方会在结果页与详情页给出对应的饮用提示。</text>
       </view>
+
+      <!-- 量表问不到的情况，给一个出口，别让用户硬往选项里塞 -->
+      <view class="assess-sym" bindtap="goSymptom" hover-class="assess-sym--hover" hover-stay-time="60">
+        <icon name="edit" size="{{52}}" color="#2E6B4F" weight="{{1.7}}" bg="#E8F1EC" />
+        <view class="assess-sym__body">
+          <view class="assess-sym__title">量表里没问到的感受？</view>
+          <view class="assess-sym__desc">补充一句，让顾问一起看</view>
+        </view>
+        <icon name="chevronRight" size="{{26}}" color="#93A099" weight="{{1.7}}" />
+      </view>
     </block>
 
     <!-- STEP 3+ 题目 -->

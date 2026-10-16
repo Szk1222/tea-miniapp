@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "补充症状",
+  "usingComponents": {
+    "icon": "/components/icon/icon"
+  }
+}

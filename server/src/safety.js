@@ -8,9 +8,8 @@
  *
  * 之所以把风控放在模型之外，是因为提示词约束是概率性的，而合规是硬性要求。
  *
- * 留痕双写：内存环形缓冲（给 /api/admin/raw-audit 快速返回）+ JSONL 落盘
- *（给管理后台做长期可追溯，见 audit-store.js）。
- * 注意：审计条目里含用户输入原文，因此**只允许通过带鉴权的管理接口读取**。
+ * 留痕双写：内存环形缓冲 + JSONL 落盘。审计只记录受控枚举与计数，
+ * 用户提问、症状描述和工具自由文本绝不落盘。
  */
 const agent = require('../../utils/agent.js');
 const knowledge = require('../../data/knowledge.js');
@@ -74,29 +73,35 @@ function preCheck(input, ctx) {
     };
   }
 
-  // 特殊人群：高危（孕期/哺乳/儿童）直接终止推荐，只做提示
-  let high = null;
-  agent.SPECIAL_RULES.forEach(function (r) {
-    if (r.re.test(text) && !(ctx.flags && ctx.flags[r.key])) {
-      ctx.flags = ctx.flags || {};
-      ctx.flags[r.key] = true;
-      if (r.level === 'high' && !high) high = r;
-    }
-  });
-
+  // 特殊阶段、慢病/用药、过敏信息不完整时，确定性终止推荐。
+  // 不能依赖模型先调用 flag_risk，更不能因上一轮已经提示过就放行。
+  const high = hardRisk(text, ctx);
   if (high) {
+    ctx.flags = ctx.flags || {};
+    ctx.flags[high.key] = true;
     return {
       kind: high.key,
-      reason: '高危人群，终止推荐链路',
+      reason: '特殊健康风险，终止推荐链路',
       blocks: [
         { type: 'notice', text: high.text, tone: 'danger' },
-        { type: 'text', text: '这一阶段日常以温和饮食为主就好。如果你想了解九种体质的基础知识，我可以先带你看一看。', small: true },
+        { type: 'text', text: '目前无法核对你的具体情况，本轮不会推荐茶方。需要饮用建议时，请先咨询熟悉你健康情况的医师或药师。', small: true },
         { type: 'chips', items: [{ label: '看看体质科普', action: 'knowledge' }, { label: '了解九种体质', action: 'knowledge' }] }
       ]
     };
   }
 
   return null;
+}
+
+function hardRisk(input, ctx) {
+  const text = String(input || '');
+  const rules = agent.SPECIAL_RULES;
+  for (let i = 0; i < rules.length; i++) {
+    if (rules[i].re.test(text)) return rules[i];
+  }
+  const risk = ctx && ctx.profile && ctx.profile.risk || {};
+  const key = risk.stage ? 'stage' : risk.chronic ? 'chronic' : risk.allergy ? 'allergy' : '';
+  return rules.filter(function (r) { return r.key === key; })[0] || null;
 }
 
 /** 中低危风险：注入前后文，让模型主动调用 flag_risk */
@@ -232,13 +237,32 @@ function audit(stage, payload, result) {
 
 function summarize(v) {
   if (v === undefined || v === null) return v;
-  if (typeof v === 'string') return v.length > 300 ? v.slice(0, 300) + '…' : v;
-  if (typeof v === 'object') {
-    const s = JSON.stringify(v);
-    if (s.length <= 600) return v;
-    return { __truncated__: true, preview: s.slice(0, 560) };
-  }
-  return v;
+  if (typeof v === 'string') return { redacted: true, length: v.length };
+  if (typeof v === 'number' || typeof v === 'boolean') return v;
+  if (Array.isArray(v)) return { count: v.length };
+  if (typeof v !== 'object') return null;
+  const out = {};
+  const numeric = ['count', 'total', 'percent', 'version', 'feelings', 'latencyMs'];
+  const flags = ['ok', 'hasNote'];
+  const enums = {
+    mode: /^(llm|local-fallback|llm-partial|safety-short-circuit)$/,
+    kind: /^(stage|child|chronic|allergy|medical)$/,
+    effect: /^(better|same|worse)$/,
+    type: /^(text|notice|teas|chips|cta|knowledge)$/,
+    main: /^(pinghe|qixu|yangxu|yinxu|tanshi|shire|xueyu|qiyu|tebing)$/,
+    name: /^(recommend_tea|get_tea_detail|search_tea|get_constitution|search_knowledge|recall_feedback|analyze_symptom|flag_risk|start_assessment)$/
+  };
+  Object.keys(v).forEach(function (key) {
+    const val = v[key];
+    if (numeric.indexOf(key) > -1 && typeof val === 'number') out[key] = val;
+    else if (flags.indexOf(key) > -1 && typeof val === 'boolean') out[key] = val;
+    else if (enums[key] && typeof val === 'string' && enums[key].test(val)) out[key] = val;
+    else if (key === 'tools' && Array.isArray(val)) out.tools = val.map(summarize);
+    else if (key === 'blocks' && Array.isArray(val)) out.blocks = val.filter(function (x) {
+      return typeof x === 'string' && enums.type.test(x);
+    });
+  });
+  return out;
 }
 
 function recentAudit(n) {
@@ -255,6 +279,7 @@ function unknownHint(query) {
 
 module.exports = {
   preCheck: preCheck,
+  hardRisk: hardRisk,
   riskHints: riskHints,
   sanitize: sanitize,
   makeStreamSanitizer: makeStreamSanitizer,

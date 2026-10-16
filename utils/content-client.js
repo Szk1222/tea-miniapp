@@ -19,6 +19,7 @@
  */
 
 const CFG = require('./config.js');
+const transport = require('./transport.js');
 const store = require('./store.js');
 const overlay = require('./content-overlay.js');
 
@@ -70,13 +71,11 @@ function refresh() {
     // 默认关闭 AI 的用户将永远收不到后台更新的内容，内容下发机制形同虚设。
     const currentVersion = overlay.getVersion();
 
-    wx.request({
-      url: CFG.API_BASE + CFG.CONTENT_PATH + '?version=' + currentVersion,
-      method: 'GET',
-      timeout: CFG.CONTENT_TIMEOUT,
-      header: { 'Content-Type': 'application/json' },
-
-      success: function (res) {
+    transport.request({
+      path: CFG.CONTENT_PATH + '?version=' + currentVersion,
+      method: 'GET', timeout: CFG.CONTENT_TIMEOUT,
+      header: { 'Content-Type': 'application/json' }
+    }).promise.then(function (res) {
         const d = res.data;
         if (!d || !d.ok) return resolve({ status: 'failed', reason: 'bad-response' });
         if (d.unchanged || !d.payload) return resolve({ status: 'unchanged', version: currentVersion });
@@ -100,13 +99,10 @@ function refresh() {
           return resolve({ status: 'failed', reason: 'apply-failed' });
         }
         return resolve({ status: 'applied', version: info.version, counts: info.counts });
-      },
-
-      fail: function (err) {
+      }, function (err) {
         lastError = (err && err.errMsg) || '网络异常';
         resolve({ status: 'failed', reason: lastError });
-      }
-    });
+      });
   });
 }
 

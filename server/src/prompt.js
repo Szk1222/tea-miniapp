@@ -8,6 +8,20 @@
 
 const CONSTITUTIONS = require('../../data/constitutions.js');
 const TEAS = require('../../data/teas.js');
+const FEEDBACK = require('../../utils/feedback.js');
+
+/**
+ * 取会话里的体感记录（已净化、限量）。
+ * prompt 层不信任外部输入：即便 ctx.feedback 被塞了脏数据，也会先走 normalize
+ * （枚举降级、控制字符剔除、限长），再拼进提示词。
+ */
+function fbList(ctx) {
+  try {
+    return FEEDBACK.sanitizeIncoming((ctx && ctx.feedback) || [], 6);
+  } catch (e) {
+    return [];
+  }
+}
 
 const SEASON_TIP = {
   春: '春季重在疏肝理气、舒展气机，适合气味芬芳、性质平和的茶饮。',
@@ -50,9 +64,16 @@ const SYSTEM_PROMPT = `你是嵌入微信小程序的「茶历方」中医体质
 - get_tea_detail：查看指定茶方的完整配方与冲泡方法。
 - search_tea：按关键词搜索茶方库。
 - get_constitution：获取某个体质的标准特征、成因与调理原则。
+- analyze_symptom：分析用户口语描述的身体感受，给出贴近的体质方向与鉴别要点。**它只给方向、不给茶方**；需要茶方仍要调用 recommend_tea。
+- recall_feedback：读取用户此前记录的「喝茶体感」。用户问「我之前喝的那个怎么样」「喝完不太舒服」时必须先调用它，不要凭印象作答。
 - search_knowledge：检索药食同源食材、茶饮常识知识库（唯一允许你引用的科普事实来源）。
 - flag_risk：输出特殊人群/过敏/医疗意图的风险提示。
 - start_assessment：引导用户去做 10 题快速体质测评。
+
+【关于用户体感记录（如果下方上下文里有）】
+- 那是用户自己写的主观感受，**不是疗效证据**。只能用来调整推荐顺序：他感觉不错的往后优先推，出现过不适反应的主动往后放并提醒先停一停、观察一下。
+- 绝不能把「他喝了以后睡得更沉」说成「这款茶能改善睡眠」这类效果承诺。
+- 用户描述不舒服时，先给关心和观察建议，必要时提示就医；不要辩解，也不要保证下次不会出现。
 
 现在开始与用户对话。记住：先理解他的感受，再用工具取事实，最后用一两句人话把结论说清楚。`;
 
@@ -102,6 +123,23 @@ function runtimeContext(ctx) {
 
   if (ctx.flags && Object.keys(ctx.flags).length) {
     lines.push('本次会话已提示过的风险类型：' + Object.keys(ctx.flags).join('、') + '，不要重复刷屏。');
+  }
+
+  // 体感记录：由端上在「AI 增强 + 单独同意」时上送（utils/agent-remote.js）。
+  // 这里只放**结构化**信息（茶方名 + 档位 + 感受标签），自由描述不做常驻注入 ——
+  // 一是省 token，二是用户可以在备注里写任何字，常驻进提示词等于给它一个稳定信道；
+  // 需要细节时让模型调 recall_feedback 工具取（工具结果里才会带备注）。
+  const fb = fbList(ctx);
+  if (fb.length) {
+    lines.push(
+      '用户近期记录的喝茶体感（主观感受，仅用于调整推荐顺序，不可当作疗效）：' +
+      fb.map(function (r) {
+        const f = FEEDBACK.feelingLabels(r.feelings);
+        return (r.teaName || r.teaId) + '=' + FEEDBACK.effectLabel(r.effect) +
+          (f.length ? '(' + f.join('、') + ')' : '');
+      }).join('；')
+    );
+    lines.push('需要细节或用户问起时调用 recall_feedback。出现过不适反应的茶方要主动往后放，并提示先停一停观察。');
   }
 
   lines.push('茶方库共 ' + TEAS.total + ' 款，格式：茶方名（对应体质）。');

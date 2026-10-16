@@ -9,6 +9,7 @@ const engine = require('./engine.js');
 const constitutions = require('../data/constitutions.js');
 const teas = require('../data/teas.js');
 const knowledge = require('../data/knowledge.js');
+const feedback = require('./feedback.js');
 
 const DISCLAIMER = '本建议仅作日常养生参考，不替代专业医疗建议。';
 
@@ -107,7 +108,7 @@ const FAQ_KEYS = [
   { k: ['怀孕', '孕期', '哺乳', '喂奶'], q: '孕期、哺乳期能喝吗' },
   { k: ['测评准', '准不准', '准吗', '靠谱吗'], q: '体质测评的结果准吗' },
   { k: ['多久见效', '喝多久', '多长时间有效', '有效果吗'], q: '喝多久能感受到变化' },
-  { k: ['一直喝', '长期同一款', '换着喝'], q: '同一款茶可以一直喝下去吗' },
+  { k: ['一直喝', '长期同一款', '换着喝', '继续喝', '喝几天', '喝了几天', '要坚持'], q: '同一款茶可以一直喝下去吗' },
   { k: ['不舒服', '拉肚子', '喝了难受'], q: '喝了之后觉得不舒服怎么办' }
 ];
 
@@ -124,6 +125,34 @@ const ASSESS_RE = /(测评|测一测|测试|测一下|检测|体质测试|开始
 const MY_TYPE_RE = /(我是什么体质|我的体质|体质结果|上次结果|我属于)/;
 const HELP_RE = /(你是什么|你是谁|能做什么|会什么|介绍一下|功能|怎么用|帮助)/;
 const TRUST_RE = /(靠谱|可信|资质|免责|安全吗|专业吗|准确)/;
+/** 体感反馈意图（喝完之后的感受表述）。
+ *  刻意要求「饮用动作 + 感受词」同时出现，避免把「喝了好几天还能继续吗」这类常识提问
+ *  误判成反馈（常识问答在第 7 步已经先匹配）。 */
+/* 体感反馈意图识别。
+ *
+ * 为什么不用「饮用动作 + 0~N 字 + 感受词」的单条邻近正则：
+ * 茶方名长度不定（「玫瑰陈皮茶」5 字、「金银花菊花茶」7 字），
+ * 固定窗口宽度会把「喝了那个金银花菊花茶不太舒服」这类正常说法漏掉——
+ * 漏掉之后会被后面的「食材科普」分支用「金银花」抢走，答非所问。
+ *
+ * 改成三条件同时成立：① 有饮用动作 ② 有感受词 ③ 与茶相关（提到「茶」或认出茶方名，
+ * 或饮用动作紧贴感受词）。③ 是为了挡掉「今天喝了很多水，感觉还不错」这类非茶场景。
+ */
+const FEEDBACK_WORD_RE = /(体感|反馈)/;
+const DRINK_ACT_RE = /(喝完|喝了|喝过|喝下来|连着喝|刚开始喝|喝的时候|喝完之后|昨天喝|前天喝|今天喝|这几天喝)/;
+const FEEL_WORD_RE = /(感觉|觉得|好像|有点|不太舒服|不舒服|难受|不错|改善|上火|睡不着|睡不|睡得|胀|发凉|发冷|暖|清爽|没变化|没感觉|有效|不适|腹泻|拉肚|头晕|心慌|恶心|过敏|起疹|有劲|精神好|见效)/;
+/** 饮用动作紧贴感受词（用户没提「茶」时的兜底，如「喝完有点上火」） */
+const DRINK_FEEL_TIGHT_RE = /(喝完|喝了|喝过|喝下来)[^，。！？]{0,6}(感觉|觉得|有点|不太舒服|不舒服|难受|上火|睡不着|睡得|胀|发凉|发冷)/;
+
+function looksLikeFeedback(text) {
+  const t = String(text || '');
+  if (FEEDBACK_WORD_RE.test(t)) return true;
+  if (!DRINK_ACT_RE.test(t)) return false;
+  if (!FEEL_WORD_RE.test(t)) return false;
+  if (t.indexOf('茶') > -1) return true;
+  if (matchTeaByName(t)) return true;
+  return DRINK_FEEL_TIGHT_RE.test(t);
+}
 
 /* ---------------- 消息工厂 ---------------- */
 
@@ -172,6 +201,11 @@ function respond(input, ctx) {
   if (!text) {
     return { messages: [t('你可以直接说说最近的感受，比如「总是没力气」「手脚冰凉」或者「最近老睡不好」。')], ctx: state };
   }
+
+  /* 体感反馈意图需要在科普/常识之前判定：
+   * 「我喝完玫瑰陈皮茶感觉睡得更沉了」如果先走食材科普，会被「陈皮」抢走。
+   * 但「喝了之后觉得不舒服怎么办」这类提问仍应走常识问答，故排除疑问句式。 */
+  const isFeedback = looksLikeFeedback(text) && !/(怎么办|咋办|该如何)/.test(text);
 
   /* 1. 医疗红线优先拦截 */
   if (hitMedical(text)) {
@@ -270,7 +304,13 @@ function respond(input, ctx) {
     return { messages: messages, ctx: state };
   }
 
-  /* 6. 口味偏好：不喜欢某味食材 → 直接换配方 */
+  /* 6. 体感反馈：说了「喝完/喝了…的感觉」，先认领茶方、给观察建议与后续动作，
+   *    并把这次体感引到正式的记录入口（记录会进入推荐权重）。 */
+  if (isFeedback) {
+    return handleFeedback(messages, state, text);
+  }
+
+  /* 7. 口味偏好：不喜欢某味食材 → 直接换配方 */
   const dislike = /(不喜欢|不爱喝|喝腻|受不了|讨厌|害怕|抵触|不想喝)/.test(text) ? matchIngredient(text) : null;
   if (dislike) {
     const cid = (state.profile && state.profile.constitutionId) || 'pinghe';
@@ -288,7 +328,7 @@ function respond(input, ctx) {
     });
   }
 
-  /* 7. 食材科普问答 */
+  /* 8. 食材科普问答 */
   const ing = matchIngredient(text);
   if (ing) {
     messages.push(t('「' + ing.name + '」' + ing.nature + '，' + ing.meridian + '，主要作用是' + ing.effect + '。'));
@@ -305,7 +345,7 @@ function respond(input, ctx) {
     return { messages: messages, ctx: state };
   }
 
-  /* 7. 快捷常识问答 */
+  /* 9. 快捷常识问答 */
   const faq = matchFaq(text);
   if (faq) {
     messages.push(t(faq.a));
@@ -314,7 +354,7 @@ function respond(input, ctx) {
     return { messages: messages, ctx: state };
   }
 
-  /* 8. 季节方向 */
+  /* 10. 季节方向 */
   const seasonHit = SEASON_WORDS.filter(function (x) { return x.re.test(text); })[0];
   if (seasonHit) {
     const cid = (state.profile && state.profile.constitutionId) || engine.constitutionByKeyword(text) || 'pinghe';
@@ -322,7 +362,7 @@ function respond(input, ctx) {
     return finishRecommend(messages, state, cid, { season: seasonHit.s, limit: 2, intro: '结合' + seasonHit.name + '，我给你挑了这两款。' });
   }
 
-  /* 9. 追问 / 口味偏好 / 加减味 */
+  /* 11. 追问 / 口味偏好 / 加减味 */
   const adjust = ADJUST_RULES.filter(function (x) { return x.re.test(text); });
   const isMore = adjust.some(function (x) { return x.tag === 'more'; });
 
@@ -337,23 +377,32 @@ function respond(input, ctx) {
     });
   }
 
-  /* 睡眠类问题先做鉴别再给茶方。
-   * 原因（审计 5.3）：量表把「睡不好」分给阴虚/气虚/特禀，关键词却全挂在气郁，
+  /* 症状类问题先做鉴别再给茶方。
+   * 原因（审计 5.3）：同一个「睡不好」，量表分给阴虚/气虚，关键词却全挂在气郁，
    * 茶方又分散在气郁(茉莉百合)与阴虚(百合桑椹) —— 三处入口各说各话。
-   * 这里统一走 engine.SYMPTOM_MAP：先问清方向，下一轮再落到具体茶方。 */
-  const guide = engine.symptomGuide(text);
-  if (guide && guide.id === 'sleep') {
-    const a = guide.candidates[0];
-    const b = guide.candidates[1];
-    messages.push(t('「睡不好」这件事，方向不止一个。同样是睡不好，一种偏向身体在燥、在发热，另一种偏向情绪没放下。'));
-    messages.push(t('你可以对一下：如果 ' + a.distinguish + '，更接近「' + constitutions.getOr(a.constitution).name +
-      '」的方向；如果 ' + b.distinguish + '，则更接近「' + constitutions.getOr(b.constitution).name + '」。'));
+   * 这里统一走 engine.symptomAnalyze：命中症状表就先问清方向（多候选时），
+   * 只有单一方向才直接落到茶方；表里没有的（用户自定义补充的症状）退回体质关键词，
+   * 再没有就交给上层知识库检索，不硬编一个方向出来。 */
+  const sym = engine.symptomAnalyze(text);
+  if (sym && sym.source === 'symptom') {
+    const cands = (sym.candidates || []).slice(0, 3);
+    if (cands.length <= 1) {
+      const cid2 = (state.profile && state.profile.constitutionId) || (cands[0] && cands[0].constitution) || 'pinghe';
+      messages.push(t('你说的「' + sym.label + '」，方向上更接近「' + constitutions.getOr(cid2).name + '」的调理思路。'));
+      return finishRecommend(messages, state, cid2, {
+        season: engine.seasonOf(), limit: 2, silentIntro: true,
+        intro: '按这个方向，先给你两款当季适合的。'
+      });
+    }
+    messages.push(t('「' + sym.label + '」的调理方向不止一个。伴随的感受不同，更贴近的体质方向也不一样，你可以对一下下面哪条更像你。'));
+    messages.push(t(cands.map(function (cd) {
+      return '· 如果' + cd.distinguish + '，更接近「' + constitutions.getOr(cd.constitution).name + '」的方向';
+    }).join('\n')));
     messages.push(t('告诉我更接近哪一种，我再给你对应的茶方；也可以直接做一次快速测评，让结果更稳。'));
-    messages.push(chips([
-      { label: '手足心热、盗汗', text: '我手心脚心发热，晚上还容易出汗，口干' },
-      { label: '情绪低落、爱叹气', text: '我情绪比较低落，老想叹气，胸口发闷' },
-      { label: '做一次快速测评', action: 'assess' }
-    ]));
+    messages.push(chips(cands.map(function (cd) {
+      const c = constitutions.getOr(cd.constitution);
+      return { label: cd.distinguish.slice(0, 8), text: '我更像' + c.name + '的情况：' + cd.distinguish };
+    }).concat([{ label: '做一次快速测评', action: 'assess' }])));
     return { messages: messages, ctx: state };
   }
 
@@ -388,17 +437,68 @@ function respond(input, ctx) {
     }
   }
 
-  /* 10. 体质关键词 → 直接推荐 */
+  /* 12. 体质关键词 → 直接推荐 */
   const kwCid = engine.constitutionByKeyword(text);
   if (kwCid) {
     return finishRecommend(messages, state, kwCid, { season: engine.seasonOf(), limit: 2 });
   }
 
-  /* 11. 兜底引导 */
+  /* 13. 兜底引导 */
   messages.push(t('我暂时没能从这个描述里找到对应的养生方向。你可以换一种说法，比如「最近总觉得累」「手脚冰凉」「吃完容易胀气」「睡得浅容易醒」。'));
   messages.push(t('也可以直接做一次快速测评，我会按你的体质来配茶。'));
   messages.push(cta('中医体质快速测评', '10 道题 · 约 90 秒 · 生成你的体质档案', 'assess', '开始测评'));
   messages.push(chips(DEFAULT_CHIPS));
+  return { messages: messages, ctx: state };
+}
+
+/* ---------------- 体感反馈 ---------------- */
+
+const POSITIVE_RE = /(舒服|不错|挺好|好多了|改善|有效果|睡得沉|睡得香|睡得更沉|睡得更香|睡得安稳|睡得好|精神好|有劲|暖和|暖|清爽|喜欢|顺了|轻松)/;
+const NEGATIVE_RE = /(不舒服|难受|拉肚子|腹泻|胃疼|胃痛|上火|心慌|头晕|恶心|胀气|睡不着|过敏|起疹|口干舌燥|肚子疼)/;
+
+/**
+ * 处理「喝完之后的感受」这类表述。
+ * 刻意**不在这里自动落库**：体感属健康敏感信息，写入前应由用户在记录页显式确认
+ * （同意范围、是否随 AI 上送），这里只做认领、观察建议与后续动作引导。
+ */
+function handleFeedback(messages, state, text) {
+  const tea = matchTeaByName(text);
+  const negative = NEGATIVE_RE.test(text);
+  const positive = POSITIVE_RE.test(text);
+
+  if (tea) {
+    messages.push(t('收到，「' + tea.name + '」这次的体感我记下了。'));
+  } else {
+    messages.push(t('收到你的体感反馈。'));
+  }
+
+  if (negative) {
+    // 先给安全提示，再谈调理 —— 顺序不能反
+    messages.push(notice('喝完出现不太舒服的反应时，请先停用并观察。若出现腹痛腹泻、皮疹、心慌、明显头晕乏力等情况，请及时前往正规医疗机构就诊。', 'warn'));
+  }
+
+  if (tea) {
+    const prev = feedback.summaryText(tea.id);
+    if (prev) messages.push(t('翻了一下你之前对这款的记录：' + prev + '。'));
+  }
+
+  if (negative) {
+    messages.push(t('这类反应通常提示当下的方向或用量不太合适。先停 3–5 天，等不适完全消退后，我们可以换一个更温和的方向，或者把用量减半再试。'));
+  } else if (positive) {
+    messages.push(t('这是个不错的信号。养生茶讲究温和缓慢，建议以 2–4 周为一个观察周期，中间留出停一停的时间，不要一直不间断地喝同一款。'));
+  } else {
+    messages.push(t('短时间内没有明显感受是正常的，日常养生茶不属于速效方案。继续观察睡眠、精神和胃口这几项就好。'));
+  }
+
+  messages.push(t('把这次感受正式记下来，我之后的推荐会据此调整：感觉不错的会优先再推给你，口味不太喜欢的会往后放。'));
+  messages.push(chips([
+    { label: tea ? ('记录「' + tea.name + '」体感') : '记录这次体感', action: 'feedback', id: tea ? tea.id : '' },
+    { label: '换一批茶方', text: '还有别的茶方推荐吗' },
+    state.profile && state.profile.constitutionId
+      ? { label: '我的体质档案', action: 'profile' }
+      : { label: '做一次快速测评', action: 'assess' }
+  ]));
+  messages.push(t(DISCLAIMER, { small: true }));
   return { messages: messages, ctx: state };
 }
 
@@ -408,11 +508,14 @@ function finishRecommend(messages, state, cid, opt) {
   opt = opt || {};
   const c = constitutions.getOr(cid);
   const basic = (state.profile && state.profile.basic) || null;
+  // 用户历史体感 → 推荐权重（只调排序，不动风险档位；见 utils/feedback.js 文件头）
+  const bias = feedback.biasFor(cid);
   const rf = engine.recommendFull(cid, {
     season: opt.season || engine.seasonOf(),
     limit: opt.limit || 2,
     exclude: opt.exclude || [],
-    basic: basic
+    basic: basic,
+    feedback: bias
   });
   const list = rf.picks;
 
@@ -525,6 +628,18 @@ function matchIngredient(text) {
   return found;
 }
 
+/** 从用户原话里认出提到的茶方（取名字最长的一个，避免「玫瑰陈皮茶」被「陈皮荷叶茶」抢先命中） */
+function matchTeaByName(text) {
+  const t = text || '';
+  let found = null;
+  teas.list.forEach(function (x) {
+    if (x.name && t.indexOf(x.name) > -1) {
+      if (!found || x.name.length > found.name.length) found = x;
+    }
+  });
+  return found;
+}
+
 function matchFaq(text) {
   const list = knowledge.faq;
   for (let i = 0; i < FAQ_KEYS.length; i++) {
@@ -558,5 +673,8 @@ module.exports = {
   ADJUST_RULES: ADJUST_RULES,
   TAG_FALLBACK: TAG_FALLBACK,
   SEASON_WORDS: SEASON_WORDS,
-  NOTICE_TEXT: NOTICE_TEXT
+  NOTICE_TEXT: NOTICE_TEXT,
+  FEEDBACK_RE: FEEDBACK_WORD_RE,
+  looksLikeFeedback: looksLikeFeedback,
+  matchTeaByName: matchTeaByName
 };

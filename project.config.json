@@ -19,6 +19,10 @@
         "type": "folder"
       },
       {
+        "value": "scripts",
+        "type": "folder"
+      },
+      {
         "value": ".md",
         "type": "suffix"
       }

@@ -1,4 +1,5 @@
 .page {
+  box-sizing: border-box;
   padding-bottom: 20rpx;
 }
 
@@ -89,6 +90,7 @@
 
 /* ---------------- 主视觉 ---------------- */
 .hero {
+  box-sizing: border-box;
   position: relative;
   height: 400rpx;
   display: flex;
@@ -172,6 +174,7 @@
 }
 
 .facts__item {
+  box-sizing: border-box;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -498,6 +501,7 @@
 }
 
 .bottom-bar__share {
+  box-sizing: border-box;
   flex: 0 0 92rpx;
   width: 92rpx;
   max-width: 92rpx;
@@ -520,6 +524,7 @@
 
 /* 主按钮：可压缩但内容不外溢（min-width:0 + overflow 兜住，任何机型都不会撑出屏幕） */
 .bottom-bar__main {
+  box-sizing: border-box;
   flex: 1 1 auto;
   min-width: 0;
   height: 88rpx;
@@ -549,4 +554,67 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ---------------- 体感反馈入口 ---------------- */
+.fb-entry {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 26rpx 28rpx;
+  border-radius: 28rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E9EDE8;
+  box-shadow: 0 2rpx 8rpx rgba(28, 56, 41, 0.04);
+}
+
+.fb-entry--hover {
+  background: #FAFBF9;
+}
+
+.fb-entry__icon {
+  flex: 0 0 auto;
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 20rpx;
+  background: #FAF2E4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fb-entry__icon.is-on {
+  background: #E8F1EC;
+}
+
+.fb-entry__body {
+  flex: 1;
+  min-width: 0;
+  margin-left: 20rpx;
+}
+
+.fb-entry__title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #17251D;
+}
+
+.fb-entry__desc {
+  margin-top: 6rpx;
+  font-size: 23rpx;
+  line-height: 1.55;
+  color: #87958B;
+}
+
+.fb-entry__btn {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  height: 60rpx;
+  padding: 0 24rpx;
+  border-radius: 999rpx;
+  background: #E8F1EC;
+  color: #2E6B4F;
+  font-size: 24rpx;
+  line-height: 60rpx;
+  text-align: center;
 }

@@ -13,6 +13,9 @@
 const agent = require('./agent.js');
 const llm = require('./llm.js');
 const store = require('./store.js');
+const feedback = require('./feedback.js');
+const CFG = require('./config.js');
+const transport = require('./transport.js');
 
 function emptyCtx(ctx) {
   return Object.assign({ profile: null, lastTeas: [], flags: {} }, ctx || {});
@@ -83,12 +86,19 @@ function respondAsync(input, ctx, handlers) {
   if (!llm.isAvailable()) return local('circuit-open');
 
   let emitted = false;
+  let cancelled = false;
 
   const task = llm.chat({
     sessionId: store.getSessionId(),
     message: text,
     profile: minimalProfile(state.profile),
-    context: { lastTeas: state.lastTeas, flags: state.flags },
+    context: {
+      lastTeas: state.lastTeas,
+      flags: state.flags,
+      // 体感记忆：只上送「哪款茶、什么感受、选了哪些体感项」，
+      // 自由描述是否随行由用户在体感记录页逐条勾选（见 utils/feedback.js minimalSummary）
+      feedback: feedback.minimalSummary(6)
+    },
     onMeta: function (m) { h.onMeta && h.onMeta(m); },
     onDelta: function (d) {
       emitted = true;
@@ -100,9 +110,7 @@ function respondAsync(input, ctx, handlers) {
     }
   });
 
-  task.abortRef = task.abort;
-
-  return task.promise.then(function (done) {
+  const result = task.promise.then(function (done) {
     return {
       messages: [],
       ctx: Object.assign({}, state, done.ctx || {}),
@@ -110,6 +118,7 @@ function respondAsync(input, ctx, handlers) {
       meta: done.meta || null
     };
   }).catch(function (err) {
+    if (cancelled) return { messages: [], ctx: state, streamed: true, cancelled: true };
     const reason = (err && err.message) || '网络异常';
 
     // 已经流出了一部分内容 → 不要把本地整段回复再叠上去，只提示可重试
@@ -129,9 +138,65 @@ function respondAsync(input, ctx, handlers) {
     res.reason = reason;
     return res;
   });
+  result.abort = function () { cancelled = true; task.abort(); };
+  return result;
+}
+
+/**
+ * 把一条体感反馈同步到服务端会话记忆（只在用户已开启 AI 增强且单独同意时）。
+ *
+ * 为什么要这个接口而不是塞进聊天消息里：
+ * 反馈是「一次性的结构化事件」，与「一句提问」语义不同；单独接口可以只上送最小化字段，
+ * 也便于服务端把它存进会话上下文（下次对话时注入 runtimeContext / 供 recall_feedback 取用）。
+ *
+ * 失败一律静默：体感已经存到本机了，服务端拿不到只是「顾问这次不知道」，
+ * 不应该让用户看到报错。
+ *
+ * @param {object} rec { teaId, teaName, constitutionId, effect, feelings, note }
+ * @returns {Promise<{ok:boolean, reason?:string}>}
+ */
+function sendFeedback(rec) {
+  return new Promise(function (resolve) {
+    try {
+      if (!rec || !rec.teaId) return resolve({ ok: false, reason: 'empty' });
+      if (!store.getAiEnabled()) return resolve({ ok: false, reason: 'disabled' });
+      if (!llm.isAvailable()) return resolve({ ok: false, reason: 'circuit-open' });
+
+      transport.request({
+        path: CFG.FEEDBACK_PATH, method: 'POST', timeout: CFG.CONTENT_TIMEOUT,
+        header: { 'Content-Type': 'application/json' }, data: {
+          sessionId: store.getSessionId(),
+          teaId: rec.teaId,
+          teaName: rec.teaName || '',
+          constitutionId: rec.constitutionId || '',
+          effect: rec.effect || 'same',
+          feelings: rec.feelings || [],
+          note: rec.note || ''
+        }
+      }).promise.then(function (res) {
+          if (res && res.data && res.data.ok) return resolve({ ok: true });
+          resolve({ ok: false, reason: 'bad-response' });
+        }, function () { resolve({ ok: false, reason: 'network' }); });
+    } catch (e) {
+      resolve({ ok: false, reason: 'exception' });
+    }
+  });
+}
+
+/** 删除当前云端短期会话；删除失败应向用户说明，不能宣称已经清除。 */
+function deleteSession(sessionId) {
+  if (!sessionId) return Promise.resolve({ ok: true });
+  return transport.request({ path: '/api/agent/session', method: 'DELETE',
+    timeout: CFG.CONTENT_TIMEOUT, header: { 'Content-Type': 'application/json' },
+    data: { sessionId: sessionId }
+  }).promise.then(function (res) {
+    return { ok: !!(res && res.statusCode < 400 && res.data && res.data.ok) };
+  }, function () { return { ok: false }; });
 }
 
 module.exports = {
   respondAsync: respondAsync,
+  sendFeedback: sendFeedback,
+  deleteSession: deleteSession,
   _minimalProfile: minimalProfile
 };

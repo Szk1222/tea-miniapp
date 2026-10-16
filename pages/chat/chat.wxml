@@ -1,12 +1,34 @@
-<view class="chat-page">
+<page-meta page-style="height:100%" />
+<!-- 上面这行必须放在页面第一个节点。
+     页面高度必须撑满视口，否则根容器的 height:100% 无处可依；
+     但这里不能用 wxss 的 page{} 选择器 —— 开发者工具的 wxss 编译器把页面样式
+     也按组件级作用域编译，会报 "Some selectors are not allowed ... tag name selectors"
+     并中断整个 wxss 编译，所以改由 page-meta 下发页面样式。 -->
 
-  <!-- 顶部状态条 -->
+<!-- pagePad：键盘弹起时容器让出的底部空间（px，由 JS 实测键盘高度得出） -->
+<view class="chat-page" style="padding-bottom: {{pagePad}}px">
+
+  <!-- 顶部状态条：模式开关（胶囊分段）排在标题右侧、同一行 -->
   <view class="chat-top">
     <view class="chat-top__left">
       <view class="live-dot"></view>
       <text class="chat-top__title">智能养生顾问</text>
-      <view wx:if="{{mainName}}" class="chat-top__tag">{{mainName}}</view>
-      <view class="chat-top__tag chat-top__tag--mode {{aiOn ? 'is-ai' : ''}}" bindtap="toggleAi">{{aiOn ? 'AI 增强' : '本地模式'}}</view>
+      <view class="mode-switch">
+        <view
+          class="mode-switch__seg mode-switch__seg--local {{aiOn ? '' : 'is-on'}}"
+          data-mode="local"
+          bindtap="onModeTap"
+          hover-class="mode-switch__seg--press"
+          hover-stay-time="60"
+        >本地模式</view>
+        <view
+          class="mode-switch__seg mode-switch__seg--ai {{aiOn ? 'is-on' : ''}}"
+          data-mode="ai"
+          bindtap="onModeTap"
+          hover-class="mode-switch__seg--press"
+          hover-stay-time="60"
+        >AI 增强</view>
+      </view>
     </view>
     <view class="chat-top__reset" bindtap="resetChat">
       <icon name="refresh" size="{{28}}" color="#93A099" weight="{{1.7}}" />
@@ -14,12 +36,31 @@
     </view>
   </view>
 
+  <!-- 第二行：体质标签（左）＋ 本轮回答的真实来源（右）。
+       右侧小字用来证明 AI 到底有没有生效：
+       服务端没连通时会如实写「回答来自「本地规则」」，而不是让用户以为开了没用。 -->
+  <view class="mode-row">
+    <view wx:if="{{mainName}}" class="chat-top__tag">{{mainName}}</view>
+    <view wx:if="{{!aiOn && aiConsented}}" class="mode-row__hint">已关闭，全在本机完成</view>
+    <view wx:elif="{{!aiOn}}" class="mode-row__hint">本机计算 · 不上传数据</view>
+    <view wx:elif="{{mode === '安全拦截'}}" class="mode-row__hint">已在本地拦截</view>
+    <view wx:elif="{{mode}}" class="mode-row__hint">回答来自「{{mode}}」</view>
+    <view wx:elif="{{sending}}" class="mode-row__hint">正在生成…</view>
+    <view wx:else class="mode-row__hint">等待提问</view>
+  </view>
+
+  <!-- 自定义症状入口：量表/常见问法里没有的症状，让用户自己补一句 -->
+  <view class="sym-entry" bindtap="goSymptom" hover-class="sym-entry--hover" hover-stay-time="60">
+    <icon name="edit" size="{{26}}" color="#2E6B4F" weight="{{1.7}}" />
+    <text class="sym-entry__text">没找到对应的症状？补充一句，我来帮你分析</text>
+    <icon name="chevronRight" size="{{24}}" color="#93A099" />
+  </view>
+
   <!-- 消息区 -->
   <scroll-view
     class="chat-scroll"
     scroll-y
     scroll-into-view="{{scrollTo}}"
-    scroll-with-animation
     enable-flex
   >
     <view class="chat-list">
@@ -35,7 +76,7 @@
         </view>
 
         <!-- 顾问文字 -->
-        <view wx:elif="{{item.type === 'text'}}" class="msg msg--bot" id="msg-{{item.id}}">
+        <view wx:elif="{{item.type === 'text'}}" class="msg" id="msg-{{item.id}}">
           <view class="avatar avatar--bot">
             <icon name="leaf" size="{{34}}" color="#2E6B4F" weight="{{1.7}}" />
           </view>
@@ -50,7 +91,7 @@
         </view>
 
         <!-- 风险 / 免责提示 -->
-        <view wx:elif="{{item.type === 'notice'}}" class="msg msg--bot" id="msg-{{item.id}}">
+        <view wx:elif="{{item.type === 'notice'}}" class="msg" id="msg-{{item.id}}">
           <view class="avatar avatar--bot">
             <icon name="leaf" size="{{34}}" color="#2E6B4F" weight="{{1.7}}" />
           </view>
@@ -61,7 +102,7 @@
         </view>
 
         <!-- 茶方推荐卡片 -->
-        <view wx:elif="{{item.type === 'teas'}}" class="msg msg--bot msg--wide" id="msg-{{item.id}}">
+        <view wx:elif="{{item.type === 'teas'}}" class="msg msg--wide" id="msg-{{item.id}}">
           <view class="avatar avatar--bot">
             <icon name="leaf" size="{{34}}" color="#2E6B4F" weight="{{1.7}}" />
           </view>
@@ -72,9 +113,44 @@
           </view>
         </view>
 
-        <!-- 测评引导卡 -->
-        <view wx:elif="{{item.type === 'cta'}}" class="msg msg--bot" id="msg-{{item.id}}">
+        <!-- 科普推送：一轮回答结束后自动附带的相关知识 -->
+        <view wx:elif="{{item.type === 'knowledge'}}" class="msg msg--wide" id="msg-{{item.id}}">
           <view class="avatar avatar--bot">
+            <icon name="book" size="{{34}}" color="#2E6B4F" weight="{{1.7}}" />
+          </view>
+          <view class="kn-push">
+            <view class="kn-push__head">
+              <view class="kn-push__title">{{item.title}}</view>
+              <view class="kn-push__hide" data-idx="{{index}}" catchtap="hideKnowledge">
+                <icon name="close" size="{{22}}" color="#A9B4AC" weight="{{1.9}}" />
+                <text class="kn-push__hide-text">收起</text>
+              </view>
+            </view>
+            <view wx:if="{{item.subtitle}}" class="kn-push__sub">{{item.subtitle}}</view>
+            <view
+              class="kn-push__item"
+              wx:for="{{item.items}}"
+              wx:for-item="k"
+              wx:for-index="ki"
+              wx:key="id"
+              data-kind="{{k.kind}}"
+              data-id="{{k.id}}"
+              bindtap="openKnowledgeItem"
+              hover-class="kn-push__item--hover"
+              hover-stay-time="60"
+            >
+              <view class="kn-push__tag">{{k.tag}}</view>
+              <view class="kn-push__body">
+                <view class="kn-push__name">{{k.title}}</view>
+                <view class="kn-push__desc">{{k.desc}}</view>
+              </view>
+              <icon name="chevronRight" size="{{26}}" color="#C6CFC9" />
+            </view>
+          </view>
+        </view>
+
+        <!-- 测评引导卡 -->
+        <view wx:elif="{{item.type === 'cta'}}" class="msg" id="msg-{{item.id}}">          <view class="avatar avatar--bot">
             <icon name="leaf" size="{{34}}" color="#2E6B4F" weight="{{1.7}}" />
           </view>
           <view class="cta-card">
@@ -109,9 +185,13 @@
 
     </view>
     <view class="chat-bottom-space"></view>
+    <!-- 底部锚点：scroll-into-view 指向同一 id 时框架不会重复触发，
+         所以用两个 id 交替设置，保证打字机/流式输出时能持续贴底 -->
+    <view id="chat-anchor-a" class="chat-anchor"></view>
+    <view id="chat-anchor-b" class="chat-anchor"></view>
   </scroll-view>
 
-  <!-- 输入区 -->
+  <!-- 输入区：作为 flex 子项排在容器末位（不再 fixed），消息区自动让出高度 -->
   <view class="composer {{focus ? 'is-focus' : ''}}">
     <view class="composer__bar">
       <input
@@ -120,17 +200,20 @@
         placeholder="说说最近的感受，比如「总觉得累」"
         placeholder-class="composer__ph"
         confirm-type="send"
-        cursor-spacing="24"
+        adjust-position="{{false}}"
         bindinput="onInput"
         bindconfirm="onSend"
         bindfocus="onFocus"
         bindblur="onBlur"
+        bindkeyboardheightchange="onKeyboardHeightChange"
       />
       <view class="composer__send {{input ? 'is-on' : ''}}" bindtap="onSend">
         <icon name="send" size="{{34}}" color="{{input ? '#FFFFFF' : '#BCC7C0'}}" weight="{{1.7}}" />
       </view>
     </view>
-    <view wx:if="{{!focus}}" class="composer__tabbar-gap"></view>
+    <!-- tabBar 占位：聚焦时 tabBar 收起，占位同步归零，输入框贴到键盘正上方 -->
+    <view class="composer__gap {{focus ? 'is-off' : ''}}"></view>
+    <view class="composer__safe {{focus ? 'is-off' : ''}}"></view>
   </view>
 
 </view>

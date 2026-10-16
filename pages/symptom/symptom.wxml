@@ -1,0 +1,88 @@
+<view class="page sy">
+
+  <!-- 顶部说明 -->
+  <view class="sy-hero">
+    <view class="sy-hero__row">
+      <view class="sy-hero__icon">
+        <icon name="edit" size="{{40}}" color="#FFFFFF" weight="{{1.7}}" />
+      </view>
+      <view class="sy-hero__text">
+        <view class="sy-hero__title">补充你的症状</view>
+        <view class="sy-hero__desc">量表里没问到的、你自己的说法都可以写。写完之后顾问会结合养生知识库帮你捋一捋方向。</view>
+      </view>
+    </view>
+    <view class="sy-hero__privacy">
+      <icon name="shield" size="{{26}}" color="#7C8A80" weight="{{1.7}}" />
+      <text class="sy-hero__privacy-text">这里的输入只发往养生顾问做分析，不保存原始文字，也不会用于其他用途。</text>
+    </view>
+  </view>
+
+  <view class="container">
+
+    <!-- 输入 -->
+    <view class="sy-box">
+      <textarea
+        class="sy-box__area"
+        value="{{text}}"
+        maxlength="120"
+        auto-height
+        adjust-position="{{true}}"
+        placeholder="例如：这段时间眼睛总是干痒，看屏幕久了更明显，晚上还有点睡不着。"
+        placeholder-class="sy-box__ph"
+        bindinput="onInput"
+      />
+      <view class="sy-box__foot">
+        <text class="sy-box__count">{{text.length}}/120</text>
+        <view wx:if="{{text}}" class="sy-box__clear" bindtap="clearText">清空</view>
+      </view>
+    </view>
+
+    <!-- 实时方向提示（本地规则算，不发网络） -->
+    <view wx:if="{{hit}}" class="sy-hit">
+      <icon name="compass" size="{{30}}" color="#2E6B4F" weight="{{1.7}}" />
+      <view class="sy-hit__body">
+        <view class="sy-hit__title">听上去更接近「{{hit.label}}」的方向</view>
+        <view class="sy-hit__desc">
+          <block wx:if="{{hit.count > 1}}">可能不止一种，顾问会帮你分辨，也可以直接发过去聊。</block>
+          <block wx:else>顾问会结合你的体质和当季情况再确认一次。</block>
+        </view>
+      </view>
+    </view>
+
+    <!-- 示例 -->
+    <view class="section-head">
+      <view class="section-title">不知道怎么描述？试试这些</view>
+    </view>
+    <view class="sy-examples">
+      <view
+        class="sy-ex"
+        wx:for="{{examples}}"
+        wx:key="*this"
+        data-v="{{item}}"
+        bindtap="pickExample"
+        hover-class="sy-ex--hover"
+        hover-stay-time="60"
+      >
+        <text class="sy-ex__text">{{item}}</text>
+        <icon name="plus" size="{{26}}" color="#93A099" weight="{{1.8}}" />
+      </view>
+    </view>
+
+    <!-- 操作 -->
+    <view class="sy-actions">
+      <view class="sy-btn sy-btn--ghost" bindtap="goAssess">还没做过体质判定</view>
+      <view class="sy-btn sy-btn--main {{text.length >= 4 ? 'is-on' : ''}}" bindtap="submit">
+        <icon name="send" size="{{32}}" color="{{text.length >= 4 ? '#FFFFFF' : '#BCC7C0'}}" weight="{{1.9}}" />
+        <text class="sy-btn__text">发给顾问分析</text>
+      </view>
+    </view>
+
+    <!-- 合规说明 -->
+    <view class="sy-note">
+      <icon name="info" size="{{28}}" color="#98A69C" weight="{{1.7}}" />
+      <text class="sy-note__text">描述日常体感就可以，不必写具体病名或用药。这里提供的是日常养生方向的参考，不做诊断，也不替代专业医疗建议。如症状持续或加重，请及时就医。</text>
+    </view>
+
+    <view class="page-bottom-gap"></view>
+  </view>
+</view>

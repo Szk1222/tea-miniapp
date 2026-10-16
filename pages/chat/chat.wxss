@@ -1,7 +1,17 @@
+/* 页面高度由 page 撑满视口，根容器用普通流的 height:100% 承接。
+   这里刻意不用 position:fixed 四边锚定：fixed 会让 page 元素高度归零，
+   页面的触摸命中区域随之变得不可靠（表现就是「看得见、点不动」）。
+   用高度而非定位，同样能做到整页不滚动、不溢出。
+
+   注意：不写 `page { height: 100% }`。wxss 里用标签名选择器（page 也是标签名）
+   会被开发者工具的 wxss 编译器判为 illegal selector 并中断编译，
+   页面高度改由 chat.wxml 首个节点 <page-meta page-style="height:100%" /> 设置。 */
 .chat-page {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
+  overflow: hidden;
   background: #F5F7F4;
 }
 
@@ -12,7 +22,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 18rpx 32rpx 16rpx;
+  padding: 18rpx 32rpx 10rpx;
   background: #F5F7F4;
 }
 
@@ -45,6 +55,7 @@
    挂在行内 <text> 上时真机不认垂直内边距，会被压成一条细扁色块，圆角与描边也会渲染异常。
    这里用「固定高度 + line-height 垂直居中 + text-align 水平居中」，不依赖 flex 居中。 */
 .chat-top__tag {
+  box-sizing: border-box;
   flex: 0 0 auto;
   height: 40rpx;
   padding: 0 16rpx;
@@ -58,17 +69,92 @@
   white-space: nowrap;
 }
 
-/* 推理链路标识：点一下可在「AI 增强」与「本地模式」之间切换 */
-.chat-top__tag--mode {
-  background: #EFEEE9;
-  color: #7C8A82;
-  border: 1rpx solid #E3E1DA;
+/* ---------------- 模式切换：胶囊分段开关 ---------------- */
+/* 顶部条与开关行都是可点区域，显式建立层叠上下文，
+   避免被后面的消息滚动区在任何机型上盖住（点击丢失的常见成因）。 */
+.chat-top,
+.mode-row {
+  position: relative;
+  z-index: 2;
 }
 
-.chat-top__tag--mode.is-ai {
-  background: #FBF3E4;
-  color: #B9873A;
-  border-color: #F0E1C6;
+.mode-row {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 2rpx 32rpx 14rpx;
+  background: #F5F7F4;
+}
+
+/* 体质标签挪到第二行行首时，不再需要为「跟在标题后」预留的左间距 */
+.mode-row .chat-top__tag {
+  margin-left: 0;
+}
+
+/* 胶囊轨道：整颗圆角 + 6rpx 内边距，选中段用白色「药丸」抬起来。
+   只用 flex + 固定高度 + 行高居中，不含 calc / 绝对定位 —— 真机上更稳。 */
+.mode-switch {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-left: 14rpx;
+  padding: 6rpx;
+  border-radius: 999rpx;
+  background: #E9EFEA;
+  border: 1rpx solid #DFE7E0;
+}
+
+/* 段高 56rpx + 轨道内边距，整颗约 68rpx（≈34px），横向每段 ≈150rpx，热区充足 */
+.mode-switch__seg {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-width: 132rpx;
+  height: 56rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  line-height: 56rpx;
+  text-align: center;
+  white-space: nowrap;
+  color: #7C8A82;
+  background: transparent;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.mode-switch__seg.is-on {
+  background: #FFFFFF;
+  box-shadow: 0 2rpx 8rpx rgba(28, 56, 41, 0.10);
+}
+
+/* 选中态用颜色区分「谁在用哪条链路」：本地=品牌绿，AI=辅助金 */
+.mode-switch__seg--local.is-on {
+  color: #2E6B4F;
+  font-weight: 600;
+}
+
+.mode-switch__seg--ai.is-on {
+  color: #8A6524;
+  font-weight: 600;
+}
+
+.mode-switch__seg--press {
+  opacity: 0.6;
+}
+
+/* 右侧：本轮回答的真实来源 */
+.mode-row__hint {
+  flex: 1;
+  min-width: 0;
+  margin-left: 16rpx;
+  text-align: right;
+  font-size: 21rpx;
+  line-height: 1.4;
+  color: #93A099;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .chat-top__reset {
@@ -103,6 +189,13 @@
   height: 40rpx;
 }
 
+/* scroll-into-view 的落点。给 1rpx 而不是 0：零高度元素在部分安卓 WebView
+   里会被判定为不可见，导致 scroll-into-view 失效 */
+.chat-anchor {
+  height: 1rpx;
+}
+
+/* 顾问侧气泡：基础样式即「头像在左」，用户侧用 .msg--user 反向 */
 .msg {
   display: flex;
   flex-direction: row;
@@ -144,6 +237,7 @@
 
 /* ---------------- 气泡 ---------------- */
 .bubble {
+  box-sizing: border-box;
   max-width: 500rpx;
   margin: 0 18rpx;
   padding: 22rpx 26rpx;
@@ -154,6 +248,7 @@
 }
 
 .bubble--bot {
+  box-sizing: border-box;
   background: #FFFFFF;
   color: #22322A;
   border: 1rpx solid #E9EDE8;
@@ -202,6 +297,7 @@
 
 /* ---------------- 提示条 ---------------- */
 .note {
+  box-sizing: border-box;
   flex: 1;
   max-width: 540rpx;
   margin-right: 12rpx;
@@ -251,6 +347,7 @@
 
 /* ---------------- 测评引导卡 ---------------- */
 .cta-card {
+  box-sizing: border-box;
   flex: 1;
   max-width: 540rpx;
   margin-right: 12rpx;
@@ -332,35 +429,155 @@
   background: #E8F1EC;
 }
 
-/* ---------------- 输入区 ---------------- */
-.composer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  /* 兜底值 + calc 覆盖，理由同 app.wxss 的 .tabbar-gap */
-  bottom: 108rpx;
-  bottom: calc(108rpx + env(safe-area-inset-bottom));
-  z-index: 950;
-  background: rgba(245, 247, 244, 0.97);
-  backdrop-filter: blur(16rpx);
-  border-top: 1rpx solid #E6EBE6;
-  transition: bottom 0.2s ease;
+/* ---------------- 自定义症状入口 ---------------- */
+.sym-entry {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 0 32rpx 12rpx;
+  padding: 16rpx 20rpx;
+  border-radius: 18rpx;
+  background: #FFFFFF;
+  border: 1rpx dashed #CFE3D7;
 }
 
-.composer.is-focus {
-  bottom: 0;
+.sym-entry--hover {
+  background: #F4FAF6;
+}
+
+.sym-entry__text {
+  flex: 1;
+  min-width: 0;
+  margin: 0 10rpx;
+  font-size: 23rpx;
+  color: #2E6B4F;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---------------- 科普推送 ---------------- */
+.kn-push {
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  margin-right: 12rpx;
+  padding: 24rpx 24rpx 10rpx;
+  border-radius: 24rpx;
+  background: #F7FAF8;
+  border: 1rpx solid #DFEAE3;
+}
+
+.kn-push__head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kn-push__title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #21503A;
+}
+
+.kn-push__hide {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 44rpx;
+  padding: 0 6rpx;
+  font-size: 21rpx;
+  color: #A9B4AC;
+}
+
+.kn-push__hide-text {
+  margin-left: 4rpx;
+}
+
+.kn-push__sub {
+  margin-top: 4rpx;
+  font-size: 21rpx;
+  color: #93A099;
+}
+
+.kn-push__item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-top: 16rpx;
+  padding: 20rpx;
+  border-radius: 18rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E9EDE8;
+}
+
+.kn-push__item--hover {
+  background: #F4FAF6;
+}
+
+.kn-push__tag {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  height: 40rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  background: #E8F1EC;
+  color: #2E6B4F;
+  font-size: 20rpx;
+  line-height: 40rpx;
+  white-space: nowrap;
+}
+
+.kn-push__body {
+  flex: 1;
+  min-width: 0;
+  margin: 0 14rpx;
+}
+
+.kn-push__name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #17251D;
+}
+
+.kn-push__desc {
+  margin-top: 4rpx;
+  font-size: 21rpx;
+  line-height: 1.5;
+  color: #7C8A80;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* ---------------- 输入区 ----------------
+   输入区是正常流内的 flex 子项（不再 position:fixed）。
+   固定在视口底部时必须自己算「消息区要留多少空」，一旦键盘参与就极易算错；
+   交给 flex 布局后，输入区占多高，消息区就自动少多高，不会互相压盖。
+   键盘让位统一由 .chat-page 的 padding-bottom 完成。 */
+.composer {
+  flex: 0 0 auto;
+  background: #F5F7F4;
+  border-top: 1rpx solid #E6EBE6;
 }
 
 .composer__bar {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 16rpx;
   padding: 18rpx 28rpx;
 }
 
 .composer__input {
+  box-sizing: border-box;
   flex: 1;
+  min-width: 0;
   height: 80rpx;
   padding: 0 30rpx;
   border-radius: 999rpx;
@@ -378,6 +595,7 @@
 .composer__send {
   width: 80rpx;
   height: 80rpx;
+  margin-left: 16rpx;
   border-radius: 50%;
   background: #E6EBE6;
   display: flex;
@@ -391,6 +609,17 @@
   background: #2E6B4F;
 }
 
-.composer__tabbar-gap {
+/* tabBar 占位：未聚焦时垫在输入区下方，避免被自定义 tabBar 盖住；
+   聚焦时 tabBar 收起，两个占位一起归零 */
+.composer__gap {
+  height: 108rpx;
+}
+
+.composer__safe {
+  height: env(safe-area-inset-bottom);
+}
+
+.composer__gap.is-off,
+.composer__safe.is-off {
   height: 0;
 }

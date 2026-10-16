@@ -72,6 +72,7 @@
 }
 
 .ihero__icon {
+  box-sizing: border-box;
   width: 104rpx;
   height: 104rpx;
   border-radius: 32rpx;
@@ -266,6 +267,7 @@
 
 /* 主按钮：图标与文字间距用 margin（不依赖 flex gap），并兜住溢出 */
 .bottom-bar__main {
+  box-sizing: border-box;
   flex: 1 1 auto;
   min-width: 0;
   height: 88rpx;

@@ -10,6 +10,8 @@
     "pages/favorites/favorites",
     "pages/knowledge/knowledge",
     "pages/knowledge-detail/knowledge-detail",
+    "pages/feedback/feedback",
+    "pages/symptom/symptom",
     "pages/settings/settings"
   ],
   "window": {

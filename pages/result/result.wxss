@@ -354,6 +354,7 @@
 }
 
 .empty-btn {
+  box-sizing: border-box;
   margin-top: 40rpx;
   gap: 12rpx;
   padding: 0 56rpx;

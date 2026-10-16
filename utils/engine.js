@@ -6,6 +6,7 @@
 const constitutions = require('../data/constitutions.js');
 const teas = require('../data/teas.js');
 const questions = require('../data/questions.js');
+const feedback = require('./feedback.js');
 
 /* ---------- 每套体质的理论最高分（用于计算倾向度百分比） ---------- */
 const MAX_SCORE = {};
@@ -145,6 +146,8 @@ function scoreTea(tea, opt) {
   }
   if (tea.constitution === opt.primary) sc += 30;
   if (tea.constitution === opt.secondary) sc += 10;
+  // 用户历史体感：只调权重、不碰风险档位（见文件头）
+  if (opt.feedback) sc += feedback.weightDelta(tea, opt.feedback);
   return sc;
 }
 
@@ -202,7 +205,8 @@ function recommendFull(primary, opt) {
         primary: primary,
         secondary: opt.secondary,
         season: season,
-        preferTags: opt.preferTags
+        preferTags: opt.preferTags,
+        feedback: opt.feedback
       })
     });
   });
@@ -234,7 +238,8 @@ function recommendFull(primary, opt) {
           primary: 'pinghe',
           secondary: '',
           season: season,
-          preferTags: opt.preferTags
+          preferTags: opt.preferTags,
+          feedback: opt.feedback
         })
       });
     });
@@ -276,7 +281,9 @@ function search(kw) {
   });
 }
 
-/** 关键词 → 体质 */
+/** 关键词 → 体质。
+ *  除了口语关键词，也认体质名本身（「我更像阳虚质」）——
+ *  症状鉴别问句的快捷选项会用它回传用户选择，不认名字就落不到对应体质上。 */
 function constitutionByKeyword(text) {
   const t = text || '';
   let best = null;
@@ -285,6 +292,8 @@ function constitutionByKeyword(text) {
     c.keywords.forEach(function (k) {
       if (t.indexOf(k) > -1) hit += k.length;
     });
+    if (c.name && t.indexOf(c.name) > -1) hit += 6;
+    if (c.short && c.short.length >= 3 && t.indexOf(c.short) > -1) hit += 3;
     if (hit > 0 && (!best || hit > best.hit)) best = { id: c.id, hit: hit };
   });
   return best ? best.id : '';
@@ -301,7 +310,7 @@ const SYMPTOM_MAP = [
   {
     id: 'sleep',
     label: '睡眠不佳',
-    keywords: ['失眠', '睡不着', '入睡困难', '多梦', '睡不好', '早醒', '睡不踏实', '睡得浅', '易醒'],
+    keywords: ['失眠', '睡不着', '入睡困难', '难以入睡', '多梦', '睡不好', '睡不踏实', '睡得浅', '易醒', '早醒', '半夜醒', '睡不够', '睡眠差', '睡眠不好', '睡眠浅'],
     candidates: [
       { constitution: 'yinxu', distinguish: '伴手足心热、盗汗、口干咽燥', teas: ['baihe-sangshen', 'gouqi-maidong'] },
       { constitution: 'qiyu', distinguish: '伴情绪低落、胸闷叹气、白天紧张', teas: ['moli-baihe', 'meigui-foshou'] },
@@ -311,7 +320,7 @@ const SYMPTOM_MAP = [
   {
     id: 'cold',
     label: '畏寒怕冷',
-    keywords: ['怕冷', '手脚凉', '手脚冰凉', '畏寒', '暖身', '腹部发凉', '腰凉'],
+    keywords: ['怕冷', '怕凉', '手脚凉', '手脚冰凉', '手脚发凉', '畏寒', '怕风寒', '暖身', '腹部发凉', '肚子凉', '腰凉', '容易冷', '比别人怕冷', '一见风就冷'],
     candidates: [
       { constitution: 'yangxu', distinguish: '喜热饮、大便偏稀、精神倦怠', teas: ['jiangzao-nuanyang', 'rougui-guiyuan'] },
       { constitution: 'qixu', distinguish: '兼疲乏气短、说话没劲', teas: ['huangqi-dangshen', 'shanyao-lianzi'] },
@@ -321,7 +330,7 @@ const SYMPTOM_MAP = [
   {
     id: 'damp',
     label: '湿重困重',
-    keywords: ['湿气', '祛湿', '身体沉', '沉重', '粘马桶', '大便黏', '浮肿', '舌苔厚腻', '困倦'],
+    keywords: ['湿气', '湿气重', '祛湿', '身体沉', '身体沉重', '沉重', '粘马桶', '大便黏', '大便粘', '浮肿', '水肿', '舌苔厚腻', '困倦', '没胃口', '困重', '头昏沉'],
     candidates: [
       { constitution: 'tanshi', distinguish: '腹型偏胖、舌苔白腻、痰多胸闷', teas: ['hongdou-yimi', 'chenpi-heye'] },
       { constitution: 'shire', distinguish: '面油长痘、口苦口臭、舌苔黄腻', teas: ['jinyinhua-juhua', 'pugongying-yumixu'] }
@@ -330,7 +339,7 @@ const SYMPTOM_MAP = [
   {
     id: 'heat',
     label: '上火燥热',
-    keywords: ['上火', '口苦', '口臭', '长痘', '痤疮', '口腔溃疡', '脸油', '出油'],
+    keywords: ['上火', '口苦', '口臭', '长痘', '起痘', '痘痘', '痤疮', '口腔溃疡', '嘴破', '溃疡', '嗓子疼', '咽喉痛', '脸油', '脸出油', '出油', '燥热', '爱出汗'],
     candidates: [
       { constitution: 'shire', distinguish: '大便黏滞或干结、舌苔黄腻', teas: ['jinyinhua-juhua', 'pugongying-yumixu'] },
       { constitution: 'yinxu', distinguish: '伴口干咽燥、手足心热、盗汗', teas: ['gouqi-maidong'] }
@@ -339,7 +348,7 @@ const SYMPTOM_MAP = [
   {
     id: 'tired',
     label: '疲乏无力',
-    keywords: ['没力气', '乏力', '疲劳', '容易累', '没劲', '气短', '懒得说话', '出虚汗'],
+    keywords: ['没力气', '没劲', '乏力', '疲劳', '容易累', '很累', '总觉得累', '气短', '懒得说话', '不想说话', '出虚汗', '精神差', '打不起精神', '容易疲惫'],
     candidates: [
       { constitution: 'qixu', distinguish: '稍动即出汗、说话声音低弱、换季易感冒', teas: ['huangqi-dangshen', 'shanyao-lianzi'] },
       { constitution: 'tanshi', distinguish: '伴身体沉重、腹部松软、大便黏腻', teas: ['hongdou-yimi'] },
@@ -349,7 +358,7 @@ const SYMPTOM_MAP = [
   {
     id: 'dry',
     label: '口干眼干',
-    keywords: ['口干', '咽干', '眼干', '眼涩', '总想喝水', '皮肤干', '口燥'],
+    keywords: ['口干', '嘴干', '咽干', '嗓子干', '喉咙干', '眼干', '眼睛干', '眼睛干痒', '眼涩', '眼睛涩', '眼睛发痒', '眼屎', '总想喝水', '老想喝水', '皮肤干', '皮肤干燥', '嘴唇干', '鼻子干', '口燥', '干痒'],
     candidates: [
       { constitution: 'yinxu', distinguish: '伴手足心热、夜间出汗、舌红少苔', teas: ['gouqi-maidong', 'baihe-sangshen'] },
       { constitution: 'shire', distinguish: '伴口苦口臭、面油长痘', teas: ['jinyinhua-juhua'] }
@@ -358,7 +367,7 @@ const SYMPTOM_MAP = [
   {
     id: 'mood',
     label: '情绪郁结',
-    keywords: ['情绪', '压力', '郁闷', '叹气', '焦虑', '紧张', '心情差', '胸闷', '提不起兴趣'],
+    keywords: ['情绪', '情绪差', '情绪低落', '心情差', '心情不好', '压力', '压力大', '郁闷', '压抑', '叹气', '爱叹气', '焦虑', '紧张', '烦躁', '易怒', '爱生气', '容易生气', '胸闷', '胸胁胀', '提不起兴趣', '开心不起来'],
     candidates: [
       { constitution: 'qiyu', distinguish: '常感胸闷、喜欢叹气、咽喉有异物感', teas: ['meigui-foshou', 'moli-baihe'] },
       { constitution: 'xueyu', distinguish: '面色晦暗、唇色偏暗、易有瘀青', teas: ['meigui-shanzha'] }
@@ -367,7 +376,7 @@ const SYMPTOM_MAP = [
   {
     id: 'stool',
     label: '排便异常',
-    keywords: ['便溏', '大便稀', '不成形', '腹泻', '便秘', '排便用力', '大便干'],
+    keywords: ['便溏', '大便稀', '拉稀', '不成形', '腹泻', '便秘', '排便用力', '大便干', '大便干结', '排便不畅', '几天没排便', '大便黏', '粘马桶'],
     candidates: [
       { constitution: 'yangxu', distinguish: '偏稀、吃凉的就容易腹泻', teas: ['jiangzao-nuanyang'] },
       { constitution: 'qixu', distinguish: '偏稀但伴疲乏、食欲偏差', teas: ['shanyao-lianzi'] },
@@ -378,7 +387,7 @@ const SYMPTOM_MAP = [
   {
     id: 'allergy',
     label: '过敏倾向',
-    keywords: ['过敏', '鼻炎', '荨麻疹', '红疹', '打喷嚏', '皮肤痒', '鼻痒', '换季过敏'],
+    keywords: ['过敏', '鼻炎', '荨麻疹', '红疹', '打喷嚏', '皮肤痒', '身上痒', '鼻痒', '换季过敏', '易过敏'],
     candidates: [
       { constitution: 'tebing', distinguish: '换季或接触花粉/尘螨时加重', teas: ['dazao-shanyao', 'wumei-shanzha'] }
     ]
@@ -400,6 +409,54 @@ function symptomGuide(text) {
     if (hit > bestHit) { best = item; bestHit = hit; }
   });
   return best;
+}
+
+/**
+ * 「自定义症状」分析：在 symptomGuide 之上加一层兜底。
+ *
+ * 背景：用户补充的症状常常不在 SYMPTOM_MAP 的口语词里（例如「眼睛干痒」「总想发脾气」），
+ * 直接判定为「没听懂」会让这个入口形同虚设。这里做两级降级：
+ *   1) 命中统一症状表 → 返回候选体质与鉴别要点（与 symptomGuide 一致，但多带 matched 词）
+ *   2) 未命中 → 退回体质识别关键词（constitutions.keywords），给出最贴近的体质方向
+ *   3) 仍未命中 → 返回 null，交给上层（对话页/服务端 RAG）去知识库检索
+ *
+ * @param {string} text
+ * @returns {null|{id:string,label:string,candidates:Array,matched:string[],source:string}}
+ */
+function symptomAnalyze(text) {
+  const t = (text || '').trim();
+  if (!t) return null;
+
+  let best = null;
+  let bestHit = 0;
+  const matched = [];
+  SYMPTOM_MAP.forEach(function (item) {
+    const hits = item.keywords.filter(function (k) { return t.indexOf(k) > -1; });
+    const hit = hits.reduce(function (a, k) { return a + k.length; }, 0);
+    if (hit > bestHit) { best = item; bestHit = hit; }
+  });
+  if (best) {
+    SYMPTOM_MAP.forEach(function (item) {
+      if (item !== best) return;
+      item.keywords.forEach(function (k) { if (t.indexOf(k) > -1) matched.push(k); });
+    });
+    return { id: best.id, label: best.label, candidates: best.candidates, matched: matched, source: 'symptom' };
+  }
+
+  const cid = constitutionByKeyword(t);
+  if (cid) {
+    const c = constitutions.getOr(cid);
+    const pool = teas.byConstitution(cid).slice(0, 3).map(function (x) { return x.id; });
+    return {
+      id: 'constitution',
+      label: c.name,
+      candidates: [{ constitution: cid, distinguish: c.short || '', teas: pool }],
+      matched: [],
+      source: 'constitution'
+    };
+  }
+
+  return null;
 }
 
 /* ---------------- 安全：茶方风险标注 ---------------- */
@@ -477,6 +534,7 @@ module.exports = {
   constitutionByKeyword: constitutionByKeyword,
   SYMPTOM_MAP: SYMPTOM_MAP,
   symptomGuide: symptomGuide,
+  symptomAnalyze: symptomAnalyze,
   riskOf: riskOf,
   riskFlags: riskFlags
 };

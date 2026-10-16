@@ -9,6 +9,7 @@
 }
 
 .search {
+  box-sizing: border-box;
   margin: 0 32rpx;
   display: flex;
   flex-direction: row;
@@ -121,6 +122,7 @@
 }
 
 .empty-btn {
+  box-sizing: border-box;
   margin-top: 36rpx;
   gap: 12rpx;
   padding: 0 48rpx;

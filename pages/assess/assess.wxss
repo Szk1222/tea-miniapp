@@ -1,4 +1,5 @@
 .assess {
+  box-sizing: border-box;
   padding-bottom: 40rpx;
 }
 
@@ -85,6 +86,7 @@
 }
 
 .field__input {
+  box-sizing: border-box;
   height: 92rpx;
   padding: 0 28rpx;
   border-radius: 20rpx;
@@ -153,6 +155,7 @@
 }
 
 .radio {
+  box-sizing: border-box;
   width: 44rpx;
   height: 44rpx;
   border-radius: 50%;
@@ -222,6 +225,7 @@
 }
 
 .actions__back {
+  box-sizing: border-box;
   flex: 0 0 auto;
   gap: 10rpx;
   padding: 0 34rpx;
@@ -256,4 +260,43 @@
   font-size: 22rpx;
   color: #8B978F;
   line-height: 1.7;
+}
+
+/* ---------------- 补充症状入口 ----------------
+   量表问不到的感受要有一个出口，否则用户会往最接近的选项里硬塞，测出来的倾向反而失真。
+   做成明确的卡片而不是一段灰字：图标居中、文案分主次两行、右侧箭头提示可点。 */
+.assess-sym {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-top: 20rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 20rpx;
+  background: #FFFFFF;
+  border: 1rpx dashed #B7D6C4;
+}
+
+.assess-sym--hover {
+  background: #F3FAF6;
+  border-color: #2E6B4F;
+}
+
+.assess-sym__body {
+  flex: 1;
+  min-width: 0;
+  margin: 0 16rpx;
+}
+
+.assess-sym__title {
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #17251D;
+  line-height: 1.4;
+}
+
+.assess-sym__desc {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #87958B;
+  line-height: 1.5;
 }

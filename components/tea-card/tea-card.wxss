@@ -62,6 +62,7 @@
 }
 
 .tc__body {
+  box-sizing: border-box;
   flex: 1;
   min-width: 0;
   padding-left: 24rpx;

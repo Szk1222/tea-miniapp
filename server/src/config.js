@@ -58,7 +58,7 @@ module.exports = {
     // 这是豆包 seed 系列的私有字段（thinking.type）。养生茶场景不需要长链推理，
     // 关掉可显著降低首字延迟与 token 消耗。
     // 换到非豆包网关时请置空（LLM_THINKING=），否则可能被网关判为非法字段。
-    thinking: env('LLM_THINKING', 'disabled'),
+    thinking: process.env.LLM_THINKING === '' ? '' : env('LLM_THINKING', 'disabled'),
 
     // 逃生舱：任意额外请求体字段（JSON），用于各家私有参数，如 {"top_p":0.9}。
     // 优先级低于上面的显式配置，同名键会被它覆盖。
@@ -80,6 +80,9 @@ module.exports = {
   session: {
     ttlMs: 30 * 60 * 1000,
     maxTurns: 8,
+    // 正式微信云托管填 cloudbase，按网关注入的 openid 隔离会话；
+    // legacy 只用于本地联调，不能作为公网服务的身份校验。
+    identityMode: env('SESSION_IDENTITY_MODE', 'legacy'),
     /** 会话数上限。超限时按最久未活跃淘汰，防止伪造 sessionId 撑爆内存 */
     maxSessions: parseInt(env('SESSION_MAX', '5000'), 10)
   },

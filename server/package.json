@@ -13,13 +13,15 @@
     "eval": "node scripts/eval.js",
     "index:build": "node scripts/build-index.js",
     "check:llm": "node --env-file=.env scripts/check-llm.js",
-    "test": "node scripts/smoke-overlay.js && node scripts/smoke-schema.js && node scripts/smoke-content.js && node scripts/smoke-admin.js && node scripts/smoke-client.js && node scripts/smoke-security.js",
+    "test": "node scripts/smoke-overlay.js && node scripts/smoke-schema.js && node scripts/smoke-content.js && node scripts/smoke-admin.js && node scripts/smoke-client.js && node scripts/smoke-security.js && node scripts/smoke-features.js && node scripts/smoke-cloud.js",
     "test:overlay": "node scripts/smoke-overlay.js",
     "test:schema": "node scripts/smoke-schema.js",
     "test:content": "node scripts/smoke-content.js",
     "test:admin": "node scripts/smoke-admin.js",
     "test:client": "node scripts/smoke-client.js",
-    "test:security": "node scripts/smoke-security.js"
+    "test:security": "node scripts/smoke-security.js",
+    "test:features": "node scripts/smoke-features.js",
+    "test:cloud": "node scripts/smoke-cloud.js"
   },
   "dependencies": {},
   "keywords": [

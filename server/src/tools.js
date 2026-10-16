@@ -12,6 +12,7 @@ const CONSTITUTIONS = require('../../data/constitutions.js');
 const TEAS = require('../../data/teas.js');
 const knowledge = require('../../data/knowledge.js');
 const agent = require('../../utils/agent.js');
+const feedback = require('../../utils/feedback.js');
 const overlay = require('../../utils/content-overlay.js');
 const rag = require('./rag.js');
 const safety = require('./safety.js');
@@ -30,6 +31,21 @@ function ctaBlock(title, desc, action, label) {
   return { type: 'cta', title: title, desc: desc, action: action, label: label || '去测评' };
 }
 function chipsBlock(items) { return { type: 'chips', items: items }; }
+
+/**
+ * 科普推送块。结构与端上 utils/knowledge-push.js 的输出完全一致
+ * （端上 chat 页按 item.type === 'knowledge' 渲染），所以两边可以共用一套渲染。
+ */
+function knowledgeBlock(block) {
+  if (!block || !block.items || !block.items.length) return null;
+  return {
+    type: 'knowledge',
+    title: block.title,
+    subtitle: block.subtitle,
+    items: block.items,
+    topicKey: block.topicKey
+  };
+}
 
 const CHIPS_AFTER_RECOMMEND = [
   { label: '换一批茶方', text: '还有别的茶方推荐吗' },
@@ -126,6 +142,35 @@ function buildTools() {
           top_k: { type: 'integer', minimum: 1, maximum: 6 }
         },
         required: ['query']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'recall_feedback',
+      description: '读取用户此前记录的「喝茶体感」（喝完之后是否有改善/不适）。当用户问「我之前喝的那个怎么样」「喝完不太舒服」或需要按体感调整推荐顺序时调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          tea_id: { type: 'string', description: '只看某一款茶方的体感记录；省略则返回最近的几条' },
+          limit: { type: 'integer', minimum: 1, maximum: 10 }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'analyze_symptom',
+      description: '分析用户口语描述的身体感受，给出可能贴近的体质方向与鉴别要点。用户补充的症状不在常规问项里、或描述含糊时调用。注意：它只给方向，不给茶方 —— 需要茶方仍要调用 recommend_tea。',
+      parameters: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: '用户的原话，尽量原样传入，不要自己改写或替换成专业术语' }
+        },
+        required: ['text']
       }
     }
   },
@@ -361,7 +406,12 @@ const EXECUTORS = {
         ok: true,
         mode: res.mode,
         hits: res.hits.map(function (h) {
-          return { title: h.title, source: h.source, type: h.type, score: h.score, content: h.text };
+          // docId / meta 一并回传：服务端要靠它把命中映射回可跳转的科普条目
+          // （见 index.js 的 hitToPushItem）。对模型没有副作用，反而便于引用。
+          return {
+            title: h.title, source: h.source, type: h.type, score: h.score,
+            content: h.text, docId: h.docId, meta: h.meta
+          };
         })
       }
     };
@@ -395,6 +445,119 @@ const EXECUTORS = {
       blocks: [ctaBlock('中医体质快速测评', '10 道题 · 约 90 秒 · 生成你的体质档案', 'assess', '开始测评')],
       result: { ok: true, note: '测评在小程序端本地完成，结果只保存在用户手机，不上传' }
     };
+  },
+
+  /**
+   * 读取本轮会话携带的体感记录。
+   *
+   * 数据来源刻意只有一处：会话 ctx.feedback（由端上在「AI 增强 + 单独同意」时上送，
+   * 见 utils/agent-remote.js 的 minimalSummary）。服务端不落盘体感记录 ——
+   * 它属于健康敏感信息，留着本地就够了（见 utils/feedback.js 的设计约束）。
+   */
+  async recall_feedback(args, ctx) {
+    const all = feedback.sanitizeIncoming((ctx && ctx.feedback) || [], 20);
+    const limit = Math.min(10, Math.max(1, args.limit || 5));
+    const list = (args.tea_id ? all.filter(function (r) { return r.teaId === args.tea_id; }) : all).slice(0, limit);
+
+    if (!list.length) {
+      return {
+        blocks: [],
+        result: {
+          ok: true,
+          records: [],
+          hint: '用户还没有记录过喝茶体感。可以顺口建议他在「首页 → 记录喝茶体感」记一条，之后的推荐会更贴合他。不要编造他喝过什么。'
+        }
+      };
+    }
+
+    const lines = list.map(function (r) {
+      const fl = feedback.feelingLabels(r.feelings);
+      return '· ' + (r.teaName || r.teaId) + '：' + feedback.effectLabel(r.effect) +
+        (fl.length ? '（' + fl.join('、') + '）' : '') +
+        (r.note ? ' —— 他说「' + r.note + '」' : '');
+    });
+    const bias = feedback.biasFromList(list, (ctx && ctx.profile && ctx.profile.constitutionId) || '');
+
+    return {
+      blocks: [textBlock('你之前记录的喝茶体感：\n' + lines.join('\n'))],
+      result: {
+        ok: true,
+        records: list,
+        // 加权只影响推荐排序，不影响安全档位 —— 「禁用/忌用」永远不进推荐池
+        preference: {
+          favorTeas: Object.keys(bias.boost).filter(function (k) { return k.indexOf('#tag:') !== 0; }),
+          avoidTeas: (bias.dislikedTeas || []).concat(Object.keys(bias.penalty).filter(function (k) { return k.indexOf('#tag:') !== 0; })),
+          note: '这些只用于调整推荐顺序，不要向用户承诺任何效果；出现过不适反应的茶方要主动往后放并提示先停一停。'
+        }
+      }
+    };
+  },
+
+  /**
+   * 「自定义症状」分析。只给方向，不给茶方 —— 茶方仍必须走 recommend_tea，
+   * 以保住「推荐茶方只有一条路径」这个不变量（否则配方来源会出现第二个出口）。
+   */
+  async analyze_symptom(args) {
+    const text = String((args && args.text) || '').slice(0, 200);
+    if (!text.trim()) {
+      return { blocks: [], result: { ok: false, hint: 'text 为空，请把用户的原话传进来' } };
+    }
+    const r = engine.symptomAnalyze(text);
+    if (!r) {
+      return {
+        blocks: [],
+        result: {
+          ok: false,
+          reason: 'no_direction',
+          hint: '本地症状表与体质关键词都没匹配上。请改用 search_knowledge 检索知识库，若仍没有收录就如实告知用户「这部分我暂时没有收录」，不要自行给出体质判断。'
+        }
+      };
+    }
+
+    const cands = (r.candidates || []).slice(0, 3);
+    const payload = cands.map(function (cd) {
+      const c = CONSTITUTIONS.getOr(cd.constitution);
+      return {
+        constitution: cd.constitution,
+        constitutionName: c.name,
+        distinguish: cd.distinguish,
+        suggestedTeas: (cd.teas || []).map(function (id) {
+          const t = TEAS.get(id);
+          return t ? t.name : id;
+        })
+      };
+    });
+
+    const blocks = [];
+    if (cands.length <= 1) {
+      const c = CONSTITUTIONS.getOr(cands[0] && cands[0].constitution);
+      blocks.push(textBlock('你说的「' + r.label + '」，方向上更接近「' + c.name + '」的调理思路。'));
+    } else {
+      blocks.push(textBlock(
+        '「' + r.label + '」的调理方向不止一个。伴随的感受不同，更贴近的体质方向也不一样，你可以对一下下面哪条更像你。\n' +
+        payload.map(function (p) { return '· 如果' + p.distinguish + '，更接近「' + p.constitutionName + '」的方向'; }).join('\n')
+      ));
+      blocks.push(chipsBlock(payload.map(function (p) {
+        return {
+          label: String(p.distinguish || '').slice(0, 8),
+          text: '我更像' + p.constitutionName + '的情况：' + p.distinguish
+        };
+      }).concat([{ label: '做一次快速测评', action: 'assess' }])));
+    }
+
+    return {
+      blocks: blocks,
+      result: {
+        ok: true,
+        label: r.label,
+        matched: r.matched,
+        source: r.source,
+        directions: payload,
+        instruction: cands.length <= 1
+          ? '方向已明确。请调用 recommend_tea（constitution_id 用 directions[0].constitution）取茶方，不要自己写配方。'
+          : '方向多于一个。请先用一句话问清用户更接近哪一种，不要在这一轮直接给出茶方或配方。'
+      }
+    };
   }
 };
 
@@ -405,6 +568,17 @@ const EXECUTORS = {
 async function run(name, rawArgs, ctx) {
   const fn = EXECUTORS[name];
   if (!fn) return { blocks: [], result: { ok: false, error: '未知工具 ' + name } };
+
+  // 最终权限在执行器边界，不能只靠 system prompt 约束模型。
+  if (['recommend_tea', 'get_tea_detail', 'search_tea'].indexOf(name) > -1) {
+    const risk = safety.hardRisk('', ctx);
+    if (risk) {
+      return {
+        blocks: [noticeBlock(risk.text, 'danger')],
+        result: { ok: false, reason: 'health_risk_blocked', kind: risk.key }
+      };
+    }
+  }
 
   let args = {};
   try { args = typeof rawArgs === 'string' ? JSON.parse(rawArgs || '{}') : (rawArgs || {}); }
@@ -424,6 +598,7 @@ module.exports = {
   get TOOLS() { return currentTools(); },
   buildTools: buildTools,
   run: run,
+  knowledgeBlock: knowledgeBlock,
   TAG_LABEL: TAG_LABEL,
   CHIPS_AFTER_RECOMMEND: CHIPS_AFTER_RECOMMEND
 };
